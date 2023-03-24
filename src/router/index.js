@@ -10,6 +10,16 @@ const router = createRouter({
       component: HomeView
     },
     {
+      path: '/form',
+      name: 'form',
+      component: ()=> import('../views/FormView.vue')
+    },
+    {
+      path: '/login',
+      name: 'Login',
+      component: ()=> import('../views/LoginView.vue')
+    },
+    {
       path: '/scheduler',
       name: 'Scheduler',
       component: ()=> import('../views/SchedulerView.vue')
