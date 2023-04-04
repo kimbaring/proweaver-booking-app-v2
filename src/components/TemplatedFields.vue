@@ -1,11 +1,16 @@
 <template>
-    <div class="pwfvf-custom-field">
-        <input :readonly="readonly" :placeholder="placeholder" :type="(type == 'number' || type== 'integer') ? 'text' : type  ?? 'text'" :class="'pwfvf-'+name" v-if="!groupTypes.includes(type) &&  type != 'textarea' && type != 'paypal'" :value="valueC" @blur="valueC = $event.target.value;validate(valueC)" :name="name">
+    
+    <div class="pwfvf-custom-field" :class="{'pwfvf-checkbox-input':type == 'checkbox'}">
+        <input :readonly="readonly" :placeholder="placeholder" :type="(type == 'number' || type== 'integer') ? 'text' : type  ?? 'text'" :class="'pwfvf-'+name" v-if="!groupTypes.includes(type) &&  type != 'textarea' && type != 'paypal' && type != 'checkbox'" :value="valueC" @blur="valueC = $event.target.value;validate(valueC)" :name="name">
         <textarea :value="valueC" :placeholder="placeholder" :class="'pwfvf-'+type" v-if="type=='textarea'" @blur="valueC = $event.target.value"></textarea>
+
+        <label v-if="type == 'checkbox'" class="pwfvf-checkbox-main" :class="{active: valueC == true}" >
+            <input :id="name" type="checkbox" hidden :checked="valueC == true" @change="$event=>valueC = $event.target.checked">
+        </label>
         
         <div class="pwfvf-checkbox-group" :style="{'grid-template-columns':columns}" v-if="type == 'checkbox-group'">
             <label v-for="v,i in values" :key="i" :for="name+'_'+i" :class="{active:selectC != null && selectC.includes(v.value)}">{{v.label}}
-                <input style="display:none" :readonly="readonly" type="checkbox" :id="name+'_'+i" :name="name+'_'+i" @change="checkThis(v.value,$event)" :checked="selectC != null && selectC.includes(v.value)">
+                <input style="display:none" :readonly="readonly" type="checkbox" :id="name+'_'+i" :name="name+'_'+i" @change="checkThis(v.value,$event);" :checked="selectC != null && selectC.includes(v.value)">
             </label>
         </div>
         <div class="pwfvf-radio-group" v-if="type == 'radio-group'" :style="{'grid-template-columns':columns}">
@@ -57,6 +62,7 @@ export default({
     },
     watch:{
         value(){
+            
             if(this.value == null && this.type == 'select') {
                 if(this.values.length == 0) return;
                 this.selectedValue = this.values[0].label
@@ -65,7 +71,6 @@ export default({
                 return;
             }
             this.valueC = this.value;
-
             // if(this.type == 'select') this.console.log(this.type == 'select',this.values.length, this.name, this.values.filter(el=>el.value==this.value)[0].label)
 
             if(this.type == 'select') if(this.values.length > 0 && this.value != null && this.value != '' && this.values.filter(el=>el.value==this.value) != null) this.selectedValue = this.values.filter(el=>el.value==this.value)[0].label
@@ -79,12 +84,10 @@ export default({
                     this.selectedValue = this.values[0].label
                     this.valueC = this.values[0].value;
                     this.$emit('onResult',this.values[0].value);
-                    this.values.forEach(el=>this.largest = (this.largest < el.label.length) ? el.label.length : this.largest);
-                    
+                    this.values.forEach(el=>this.largest = (this.largest < el.label.length) ? el.label.length : this.largest); 
                 }
             },
             deep:true
-            
         },
         valueC(c){
             if(this.error == '') this.$emit('onResult',this.valueC);
@@ -111,8 +114,16 @@ export default({
 
         if(this.type == 'checkbox-group') this.selectC = this.select ?? [];
         if(this.type == 'select') {
-            if(this.values.length > 0) this.selectedValue = this.values[0].label
-            if(this.values.length > 0) this.valueC = this.values[0].value;
+            if(this.values.length == 0) return;
+            if(this.value == null){
+                this.selectedValue = this.values[0].label
+                this.valueC = this.values[0].value;
+            }else{
+                this.selectedValue = this.values.filter(el=>el.value==this.value)[0].label
+                this.valueC = this.value
+                this.values.forEach(el=>this.largest = (this.largest < el.label.length) ? el.label.length : this.largest);
+            }
+
             this.values.forEach(el=>this.largest = (this.largest < el.label.length) ? el.label.length : this.largest);
         }
     },

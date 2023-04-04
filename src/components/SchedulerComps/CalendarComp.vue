@@ -5,7 +5,7 @@
             :schedule="queSchedule"
             :facilities="labelValueForFacilities.noAllOpts"
             :roles="labelValueForDesignations.noAllOpts"
-            @close="e=>{modalClose=e;this.resetQueSchedule()}"
+            @close="e=>{modalClose=e;}"
             @onCreate="e=>createSchedule(e)"
             @onUpdate="e=>updateSchedule(e)"
             @onDelete="e=>deleteSchedule(e)"
@@ -87,8 +87,8 @@ export default{
                 updated: [],
                 deleted: [],
                 assignedChanges:{},
-
             },
+            console,
             alertResult:null,
             cc:{y:0,m:0,d:0},
             qd:{y:0,m:0,d:0},
@@ -294,7 +294,6 @@ export default{
             <li>Created <strong>${created.length}</strong> schedule${created.length > 1 ? 's':''}</li>
             <li>Updated <strong>${updated.length}</strong> schedule${updated.length > 1 ? 's':''}</li>
             <li>Deleted <strong>${this.editTracker.deleted.length}</strong> schedule${this.editTracker.deleted.length > 1 ? 's':''}</li>
-            <li>Modified assignations for  <strong>${Object.keys(this.editTracker.assignedChanges).length}</strong> schedule${Object.keys(this.editTracker.assignedChanges).length > 1 ? 's':''}</li>
             </ul>`
             ,'warning',[
                 {label:'Yes',data:true},
@@ -488,7 +487,7 @@ export default{
             this.resetQueSchedule();
             this.buildCalendar();
         },
-        resetQueSchedule(){ 
+        resetQueSchedule(){
             this.queSchedule = JSON.parse(JSON.stringify(this.defVals))
         },
         addSchedule(date){
@@ -506,7 +505,6 @@ export default{
             Object.keys(this.queSchedule).forEach(qd=>{
                 editThisSchedule[qd] = schedule[qd];
             });
-            console.log(editThisSchedule)
             this.queSchedule = editThisSchedule;
 
             this.modalClose=false;

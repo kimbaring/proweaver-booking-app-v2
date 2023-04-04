@@ -15,7 +15,7 @@
                 <input :readonly="readonly" :id="name+'_'+i" type="radio" :name="name" :checked="valueC == v.value" @change="valueC = v.value;"></label>
         </div>
         
-        <div class="pwbcf-select" :class="'pwbcf-select-'+name"  v-if="type == 'select'" @click="closeAllOpenSelects" :data-pwbcf="name">
+        <div class="pwbcf-select" :class="'pwbcf-select-'+name"  v-if="type == 'select'" @click="closeAllOpenSelects" :data-pwbcf="name" :style="{width:largest+'rem',minWidth:'100%'}">
             <span v-html="selectedValue"></span>
             <i class="pwbcf-select-caret-down">&#9660;</i>
             <div class="pwbcf-select-menu">
@@ -79,7 +79,7 @@ export default({
                     this.selectedValue = this.values[0].label
                     this.valueC = this.values[0].value;
                     this.$emit('onResult',this.values[0].value);
-                    this.values.forEach(el=>this.largest = (this.largest < el.label.length) ? el.label.length : this.largest);
+                    this.values.forEach(el=>this.largest = (this.largest < el.label.replace(/(<([^>]+)>)/gi, "").length) ? el.label.replace(/(<([^>]+)>)/gi, "").length : this.largest);
                     
                 }
             },
@@ -110,11 +110,19 @@ export default({
         this.json = JSON.stringify(this.form);
 
         if(this.type == 'checkbox-group') this.selectC = this.select ?? [];
-        if(this.type == 'select') {
+        if(this.type == 'select' && (this.value == null || this.value == '')) {
             if(this.values.length > 0) this.selectedValue = this.values[0].label
             if(this.values.length > 0) this.valueC = this.values[0].value;
-            this.values.forEach(el=>this.largest = (this.largest < el.label.length) ? el.label.length : this.largest);
+        }else if(this.type == 'select'){
+            let valueIndex = this.values.findIndex(el=>el.value == this.valueC)
+            this.selectedValue = this.values[valueIndex].label
+            this.valueC = this.values[valueIndex].value
         }
+        if(this.values != null && this.values.length > 0) this.values.forEach(el=>{
+            if(typeof el.label != 'string') el.label = el.label.toString();
+            this.largest = (this.largest < el.label.replace(/(<([^>]+)>)/gi, "").length) ? el.label.replace(/(<([^>]+)>)/gi, "").length : this.largest
+        });
+        
     },
     methods:{
         validate(text){
@@ -125,16 +133,16 @@ export default({
             this.error = '';
 
             if(this.type == 'email' && text.match(emailregex) == null && text != ''){
-                this.error = 'Email is not in valid format';
+                this.error = `Email is not in valid format`;
                 return;
             }else if(this.type == 'telephone' && text.match(teleregex) == null && text != ''){
-                this.error = 'Phone is not in valid format';
+                this.error = `Phone is not in valid format`;
                 return;
             }else if(this.type == 'number' && text.match(numregex) == null && text != ''){
-                this.error = 'Number is not in valid format';
+                this.error = `Number is not in valid format`;
                 return;
             }else if(this.type == 'integer' && text.match(intregex) == null && text != ''){
-                this.error = 'Integer must only contain numbers';
+                this.error = `Integer must only contain numbers`;
                 return;
             }
 

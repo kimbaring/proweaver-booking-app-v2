@@ -35,9 +35,19 @@ const router = createRouter({
       component: ()=> import('../views/FormBuilderView.vue')
     },
     {
+      path: '/forms',
+      name: 'FormsView',
+      component: ()=> import('../views/FormsView.vue')
+    },
+    {
       path: '/preferences',
       name: 'Preferences',
       component: ()=> import('../views/PreferencesView.vue')
+    },
+    {
+      path: '/test',
+      name: 'test',
+      component: ()=> import('../components/RequestBindedFields.vue')
     },
   ]
 })

@@ -104,15 +104,14 @@
                     :value="queSchedule.color"
                     @on-result="e=>queSchedule.color=e"
                 />
-                <!-- <label>Rate/hr ($)</label>
+                <label>Max Bookings</label>
                 <CustomFieldVue 
-                    type="number"
-                    placeholder="Hourly rate (only applies to schedule takers)"
-                    name="scheduler-form-rate"
-                    :value="queSchedule.wage"
-                    @on-result="e=>queSchedule.wage=e"
-
-                /> -->
+                    type="integer"
+                    placeholder="Maximum appointments to take"
+                    name="scheduler-form-maxapp"
+                    :value="queSchedule.max_appointments"
+                    @on-result="e=>queSchedule.max_appointments=e"
+                />
                 <label>Description</label>
                 <CustomFieldVue 
                     type="textarea"
@@ -140,7 +139,7 @@ import { axios } from '../../functions';
 
 export default{
     components:{CustomFieldVue,StyledAlert},
-    props:{modalCloseProp:Boolean,schedule:Object,facilities:Array,roles:Array},
+    props:{ modalCloseProp:Boolean,schedule:Object,facilities:Array,roles:Array},
     data(){
         return{
             dateFormat,
@@ -269,6 +268,9 @@ export default{
                     case 'shift_end':
                         emptyFieldsErrorMsg+='<strong>End Time</strong>, '
                     break;
+                    case 'max_appointments':
+                        emptyFieldsErrorMsg+='<strong>Max Bookings</strong>, '
+                    break;
                     // case 'wage':
                     //     emptyFieldsErrorMsg+='<strong>Rate/hr</strong>, '
                     // break;
@@ -295,10 +297,10 @@ export default{
             }
 
 
-            // if(this.queSchedule.wage < 0){
-            //     this.errormsg = '<strong>Wage</strong> field must be a positive number or 0';
-            //     return;
-            // }
+            if(this.queSchedule.max_appointments <= 0){
+                this.errormsg = '<strong>Max Appointment</strong> field must be at least 1';
+                return;
+            }
 
             if(this.queSchedule.id == '' && this.queSchedule.repeatDays.length == 0){
                 this.errormsg = '<strong>Repeat Days</strong> field should have at least one check';
