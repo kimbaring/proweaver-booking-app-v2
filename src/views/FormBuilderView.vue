@@ -233,7 +233,7 @@ function cancelEdit(){
 
 <template>
   <div class="p-5">
-  <div class="fixed w-screen h-screen bg-black bg-opacity-50 z-[999] flex items-center justify-center" v-if="queField != null">
+  <div class="fixed w-screen h-screen bg-black bg-opacity-50 z-[999] flex items-center justify-center top-0 left-0" v-if="queField != null">
     <div class="w-[400px] bg-white rounded-lg max-h-[80vh] overflow-auto">
       <div class="bg-gray-900 p-3 py-5 text-white rounded-t-lg">
         <h2 class="font-bold text-lg">Edit {{ queField.content_type.charAt(0).toUpperCase()+queField.content_type.substring(1) }}</h2>
@@ -418,7 +418,7 @@ function cancelEdit(){
     </div>
   </div>
 
-  <div class="fixed w-screen h-screen bg-black bg-opacity-50 z-[999] flex items-center justify-center" v-if="migrateFieldMode">
+  <div class="fixed w-screen h-screen bg-black bg-opacity-50 z-[999] flex items-center justify-center top-0 left-0" v-if="migrateFieldMode">
     <div class="w-[400px] bg-white rounded-lg max-h-[80vh]">
       <div class="bg-gray-900 p-3 py-5 text-white rounded-t-lg"> <h2 class="font-bold text-lg">Move Content</h2></div>
       <div class="p-3">
@@ -511,8 +511,8 @@ function cancelEdit(){
         <button @click="deletePage" class="transition bg-red-700 text-white p-1.5 rounded-md mt-2 hover:scale-105 active:scale-95" v-if="form.pages.length > 1">Delete Page</button>
         <h2 for="pwfb-pagecolumns" class="mb-2 mt-5 block font-bold text-gray-700 text-lg">Content</h2>
         <div class="">
-          <div class="border-gray-300 border mb-1 rounded-md p-1 py-1 flex justify-between items-center" v-for="f,i in fields">
-            <span class="grow">{{ f.content_type == 'field' ? f.label : (f.text.length > 30) ? f.text.substring(0,30)+'...':f.text}}</span>
+          <div class="border-gray-300 border mb-1 rounded-md p-1 py-1 flex justify-between items-center" v-for="f,i in fields" :key="i  ">
+            <span class="grow">{{ f.content_type == 'field' ? f.label : (f.text.length > 30) ? f.text.substring(0,30)+'...':f.text}} <span v-if="['rbfield','scheduler'].includes(f.content_type)" class="text-red-700">*</span></span>
             <div class="flex">
               <button title="Move Content Up" @click="moveFieldUp(i)" class="transition bg-gray-900 text-white mx-[1px] p-[2px] py-[5px] rounded-sm hover:scale-105 active:scale-95" v-if="i != 0"><i v-html="icons.arrowUpSmall"></i></button>
               <button title="Move Content Down" @click="moveFieldDown(i)" class="transition bg-gray-900 text-white mx-[1px] p-[2px] py-[5px] rounded-sm hover:scale-105 active:scale-95" v-if="i != fields.length - 1"><i v-html="icons.arrowDownSmall"></i></button>

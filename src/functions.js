@@ -330,7 +330,6 @@ const Paypal = new PaypalIntegration();
 function delayExec(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-
 function hexToHsl(H) {
     // Convert hex to RGB first
     let r = 0, g = 0, b = 0;

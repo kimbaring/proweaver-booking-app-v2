@@ -1,14 +1,13 @@
 <script setup>
 import {axios} from '../functions';
 import {onMounted, ref,watch} from 'vue'
-let emit = defineEmits(['onResult']);
 let props = defineProps({
     endpoint: {default:'',type:String},
     based: {default:'',type:String},
     type: {default:'',type:String},
     value: {default:'',type:String},
 });
-
+let emit = defineEmits(['onResult','onEmpty']);
 let selectedValue = ref('')
 let values = ref([]);
 let name = ref(props.endpoint.split('/')[0])
@@ -27,7 +26,11 @@ function closeAllOpenSelects(){
 
 onMounted(()=>{
     axios.post(props.endpoint).then(res=>{
-        if(res.data == null || !res.data.success) return;
+        if(res.data == null || !res.data.success){
+            emit('onEmpty')
+            return;
+        }
+
         values.value = res.data.result
 
         if(props.value == '') selectedValue.value = values.value[0][props.based];

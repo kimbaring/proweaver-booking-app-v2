@@ -1,5 +1,6 @@
 import {hexToHsl} from './functions'
 
+
 export const fieldDefault = {
     text: {
         "content_type" : "text",
@@ -95,6 +96,15 @@ export const formData = {
                     text:'Select Service'
                 },
                 {
+                    "content_type" : "rbfield",
+                    "column": 2,
+                    endpoint:'location/fetch',
+                    based : 'book_location_name',
+                    type : 'radio',
+                    value : '',
+                    text:'Select Location'
+                },
+                {
                     "content_type" : "scheduler",
                     "column": 1,
                     text:"Scheduler",
@@ -127,7 +137,7 @@ export const formData = {
             ]
         },
         {
-            "page_title" : "Payment",
+            "page_title" : "Message",
             "page_columns" : 1,
             "page_fields" : [
                 {
@@ -209,24 +219,7 @@ export const formData = {
                     "placeholder": "",
                     "values": [{label:'Weekdays',value:0},{label:'Weekends',value:1}],
                     "select": [],
-                    "options": {maximum_checks: null},
-                    "index": "",
-                    "styles": {}
-                },
-                {
-                    "content_type" : "field",
-                    "type": "select",
-                    "name": "availiability",
-                    "label": "Availiability",
-                    "value": "",
-                    "column": 2,
-                    "grid": '1fr 1fr',
-                    "readonly": false,
-                    "required": true,
-                    "placeholder": "",
-                    "values": [{label:'Weekdays',value:0},{label:'Weekends',value:1}],
-                    "select": [],
-                    "options": {maximum_checks: null},
+                    "options": {maximum_checks: 2},
                     "index": "",
                     "styles": {}
                 },
@@ -831,5 +824,24 @@ textarea{white-space: pre-wrap;height:unset;min-height: 70px;}
     margin-left: 5px;
     font-style: italic;
     font-weight:400;
+}
+
+/* responsive - 1000px */
+#pwfv-parent[data-responsive*="1000"] .pwfv-body{
+    flex-wrap: wrap
+}
+
+#pwfv-parent[data-responsive*="1000"] .pwfv-body{
+    width: 100%;
+}
+
+#pwfv-parent[data-responsive*="1000"] .pwfv-navigation{
+    display: grid;
+    width: 100%
+}
+
+/* responsive - 800px */
+#pwfv-parent[data-responsive*="800"] .pwfv-maingrid.two-cols > div{
+    width:100%
 }
 `};

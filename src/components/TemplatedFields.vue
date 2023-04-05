@@ -102,7 +102,7 @@ export default({
         selectC:{
             handler(c){
                 if(c == null) return;
-                this.$emit('onResult',this.selectC);
+                this.$emit('onResult',JSON.parse(JSON.stringify(this.selectC)));
             },
             deep:true
         }
