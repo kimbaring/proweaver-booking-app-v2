@@ -82,6 +82,9 @@ export default{
     components:{ScheduleSetForm,CustomFieldVue,StyledAlert},
     data(){
         return{
+            viewMode:0,
+            branches:[],
+            designations:[],
             editTracker:{
                 created: [],
                 updated: [],

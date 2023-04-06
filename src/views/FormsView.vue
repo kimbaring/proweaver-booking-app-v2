@@ -16,8 +16,8 @@ onMounted(()=>{
 })
 
 function go(url){
-    if(window.location.hostname == '127.0.0.1') window.location.assign(`${window.location.protocol}//${window.location.hostname}:${window.location.port}/pw-bookingapp/`+url)
-    else window.location.assign(`${window.location.protocol}//${window.location.hostname}/pw-bookingapp/`+url)
+    if(window.location.hostname == '127.0.0.1') window.location.assign(`${window.location.protocol}//${window.location.hostname}:${window.location.port}/pw-bookingapp/admin/`+url)
+    else window.location.assign(`${window.location.protocol}//${window.location.hostname}/pw-bookingapp/admin/`+url)
 }
     
 
@@ -30,7 +30,7 @@ function deleteForm(id){
 
 function showEmbedCode(id){
     embedCode.value = 
-`<iframe src="${window.location.protocol}//${window.location.hostname}/pw-bookingapp/form?form_id=${id}">
+`<iframe id="pwform" src="${window.location.protocol}//${window.location.hostname}/pw-bookingapp/admin/form?form_id=${id}">
 </iframe>`
 }
 

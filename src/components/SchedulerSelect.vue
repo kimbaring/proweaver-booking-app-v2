@@ -77,6 +77,12 @@ export default{
                 alert('Cannot select a finished schedule!')
                 return
             }
+
+            if(sched.is_full){
+                alert('Your chosen schedule is no longer available as it reached maximum number of bookings.')
+                return;
+            }
+
             this.chosenSchedule = sched.book_schedule_id
             this.$emit('onResult',this.chosenSchedule)
         },
@@ -193,7 +199,11 @@ export default{
             <div class="spinner" v-if="fetching"></div>
             <div class="pwfvf-scheduler-availscheds-empty" v-if="!fetching && availableSchedules.length == 0">No schedules for this date...</div>
             <div class="pwfvf-scheduler-availscheds-item" v-for="asc in availableSchedules" @click="selectSchedule(asc)" :class="{active:chosenSchedule == asc.book_schedule_id}">
-                <h2>{{ asc.book_schedule_service }}</h2>
+                <h2>{{ asc.book_schedule_service }}
+                    <span v-if="asc.is_full"> FULL</span>
+                    <span v-if="new Date(asc.book_schedule_date+' '+asc.book_schedule_timestart).getTime() <=
+                new Date().getTime()"> DONE</span>
+                </h2>
                 <small>{{ dateFormat('%h:%I%a',asc.book_schedule_date +' '+asc.book_schedule_timestart)}} - 
                 {{ dateFormat('%h:%I%a',asc.book_schedule_date +' '+asc.book_schedule_timeend)}}</small>
             </div>
@@ -219,5 +229,15 @@ export default{
     transform: rotate(360deg);
   }
 }
+
+.pwfvf-scheduler-availscheds-item h2 span{
+    font-size: 11px;
+    padding: 2px 5px;
+    background: rgb(165, 48, 48);
+    color: #fff;
+    border-radius: 14px;
+    margin: 2px;
+}
+
 
 </style>

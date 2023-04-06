@@ -1,5 +1,18 @@
 <script setup>
-import { RouterView } from 'vue-router'
+import { RouterView, useRouter } from 'vue-router'
+import { onMounted } from 'vue'
+import { lStore,delayExec } from './functions'
+
+
+onMounted( ()=>{
+  let path = window.location.pathname.replace('/pw-bookingapp','')
+  path = path.replace('/admin','')
+  if(path == '/form') return;
+  if(path == '/login' && lStore.token != null) useRouter().replace('/scheduler')
+  if((path != '/login') && lStore.token == null) useRouter().replace('/login')
+});
+
+
 </script>
 
 <template>

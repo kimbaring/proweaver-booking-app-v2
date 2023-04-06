@@ -115,7 +115,7 @@ function deletePage(){
     if(['rbfield','scheduler'].includes(el.content_type)) containsSpecialFields = true;
   })
   if(containsSpecialFields){
-    alert('This page contains a RBfield (Request Binded Field) or a Scheduler, both which are required fields. Please move it to the other page first before deleting the page.')
+    alert('This page contains a RBField (Request Binded Field) or a Scheduler, both which are required fields. Please move it to the other page first before deleting the page.')
     return;
   }
   form.value.pages.splice(pageToDelete, 1);
@@ -509,10 +509,11 @@ function cancelEdit(){
           @onResult="e=>{currentPage.page_columns = e;}"
         />
         <button @click="deletePage" class="transition bg-red-700 text-white p-1.5 rounded-md mt-2 hover:scale-105 active:scale-95" v-if="form.pages.length > 1">Delete Page</button>
-        <h2 for="pwfb-pagecolumns" class="mb-2 mt-5 block font-bold text-gray-700 text-lg">Content</h2>
+
+        <h2 for="pwfb-pagecolumns" class="mt-5 mb-2 block font-bold text-gray-700 text-lg">Content</h2>
         <div class="">
-          <div class="border-gray-300 border mb-1 rounded-md p-1 py-1 flex justify-between items-center" v-for="f,i in fields" :key="i  ">
-            <span class="grow">{{ f.content_type == 'field' ? f.label : (f.text.length > 30) ? f.text.substring(0,30)+'...':f.text}} <span v-if="['rbfield','scheduler'].includes(f.content_type)" class="text-red-700">*</span></span>
+          <div class="border-gray-300 border mb-1 rounded-md p-1 py-1 flex justify-between items-center gap-1" v-for="f,i in fields" :key="i  ">
+            <span class="grow truncate">{{ f.content_type == 'field' ? f.label : f.text}} <span v-if="['rbfield','scheduler'].includes(f.content_type)" class="text-red-700">*</span></span>
             <div class="flex">
               <button title="Move Content Up" @click="moveFieldUp(i)" class="transition bg-gray-900 text-white mx-[1px] p-[2px] py-[5px] rounded-sm hover:scale-105 active:scale-95" v-if="i != 0"><i v-html="icons.arrowUpSmall"></i></button>
               <button title="Move Content Down" @click="moveFieldDown(i)" class="transition bg-gray-900 text-white mx-[1px] p-[2px] py-[5px] rounded-sm hover:scale-105 active:scale-95" v-if="i != fields.length - 1"><i v-html="icons.arrowDownSmall"></i></button>
@@ -540,6 +541,9 @@ function cancelEdit(){
         
         <button @click="addField" class="transition bg-green-700 text-white p-1.5 rounded-md mt-2 mr-1 hover:scale-105 active:scale-95">{{ addFieldMode ? 'Confirm' : 'Add Content' }}</button>
         <button @click="addFieldMode = false" class="transition bg-red-700 text-white p-1.5 rounded-md mt-2 hover:scale-105 active:scale-95" v-if="addFieldMode">Cancel</button>
+
+        <p class="mt-2 text-sm"><strong class="text-sm">Note:</strong> If content has an (*) symbol after its label, it is required to have in any page and cannot be deleted. If you did not add any service, worker or location, it will automatically be hidden from the form.</p>
+
       </div> <!-- builder aside -->
       <div> <!-- builder form view -->
         <div class="bg-white p-5 mb-5" v-if="modifyCSSMode">

@@ -34,6 +34,7 @@
 </template>
 
 <script>
+import { delayExec } from '../functions';
 
 export default({
     props:{
@@ -57,7 +58,8 @@ export default({
             largest: 0,
             console,
             loaded:false,
-            groupTypes:['checkbox-group','radio-group','select']
+            groupTypes:['checkbox-group','radio-group','select'],
+            debounceTimer: null
         }
     },
     watch:{
@@ -101,6 +103,7 @@ export default({
         },
         selectC:{
             handler(c){
+                if(this.selectC == this.select) return;
                 if(c == null) return;
                 this.$emit('onResult',JSON.parse(JSON.stringify(this.selectC)));
             },
@@ -161,7 +164,7 @@ export default({
             if(!e.classList.contains('shown')) e.classList.add('shown');
             else e.classList.remove('shown');
         },
-        checkThis(v,e){ 
+        checkThis(v,e){
             if(this.options != null && this.options.maximum_checks != 0 && this.selectC.length >= this.options.maximum_checks && e.target.checked) {
                 e.target.checked = false;
                 return;

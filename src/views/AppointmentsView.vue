@@ -110,8 +110,8 @@ function parseJSON(mix){
               <td class="border-b p-1">{{ parseJSON(modal.info).status }}</td>
             </tr>
 
-            <tr v-for="f,i in parseJSON(modal.info).appointment" :key="i" class="border-b" v-show="f.field != 'Pick_A_Schedule'">
-              <td class="font-bold text-gray-800 border-b p-1">{{ f.field.replaceAll('_',' ') }}</td>
+            <tr v-for="f,i in parseJSON(modal.info).appointment" :key="i" class="border-b" v-show="!f.id.includes('pwid=scheduler')">
+              <td class="font-bold text-gray-800 border-b p-1">{{ f.label.replaceAll('_',' ') }}</td>
               <td class="border-b p-1">{{ [0,'','undefined',null,undefined].includes(f.value) ? '-' : f.value }}</td>
             </tr>
           </table>

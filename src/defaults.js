@@ -105,6 +105,15 @@ export const formData = {
                     text:'Select Location'
                 },
                 {
+                    "content_type" : "rbfield",
+                    "column": 2,
+                    endpoint:'worker/fetch',
+                    based : 'book_worker_name',
+                    type : 'radio',
+                    value : '',
+                    text:'Select Worker'
+                },
+                {
                     "content_type" : "scheduler",
                     "column": 1,
                     text:"Scheduler",
@@ -265,6 +274,8 @@ return `:root{
     margin: 0 auto;
     border-radius: 7px 7px;
     background:#fff;
+    max-width: 1200px;
+    box-shadow: 0 0 2px #aaa;
 }
 
 .pwfv-header{
@@ -400,6 +411,40 @@ return `:root{
 
 .pwfv-fielditem:not(:first-child) > div > label{
     margin-top:10px;
+}
+
+.pwfv-success{
+	padding: 20px;
+}
+
+.pwfv-success-box{
+	padding: 20px;
+	text-align: center;
+	box-shadow: 0 4px 8px #aaa;
+	max-width: 500px;
+	margin: 0 auto;
+    animation-name: popSuccess;
+    animation-duration: 0.4s;
+}
+
+@keyframes popSuccess{
+    from{
+        transform: scale(0)
+    }
+}
+
+.pwfv-success-checkmark{
+	width: 150px;
+	height: 150px;
+	background: var(--pwcss-primary-color);
+	border-radius: 50%;
+	color: var(--pwcss-contra-color);
+	padding: 19px;
+	margin: 0 auto 14px;
+}
+
+.pwfv-success-checkmark i {
+	filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.67));
 }
 
 
@@ -826,22 +871,69 @@ textarea{white-space: pre-wrap;height:unset;min-height: 70px;}
     font-weight:400;
 }
 
+
+/* Guide To Form Responsiveness:
+Form Responsiveness is based from the width of the form when 
+the form is initially loaded and when it is resized, not based on the screen width.
+
+So instead of using @media queries, we use:
+#pwfv-parent[data-responsive*="rformWidth"]
+
+Please add the selector code above before specifying any selector.
+Substitute rformWidth with any of the breakpoints (e.g r1400 for 1400px form width)
+The supported width breakpoints are: 400, 600, 800, 1000, 1200, 1400
+*/
+
 /* responsive - 1000px */
-#pwfv-parent[data-responsive*="1000"] .pwfv-body{
+#pwfv-parent[data-responsive*="r1000"] .pwfv-body{
     flex-wrap: wrap
 }
 
-#pwfv-parent[data-responsive*="1000"] .pwfv-body{
+#pwfv-parent[data-responsive*="r1000"] .pwfv-body{
     width: 100%;
 }
 
-#pwfv-parent[data-responsive*="1000"] .pwfv-navigation{
+#pwfv-parent[data-responsive*="r1000"] .pwfv-navigation{
     display: grid;
+    grid-template-columns:1fr 1fr;
     width: 100%
 }
 
+#pwfv-parent[data-responsive*="r800"] .pwfv-navigation-item{
+    margin-bottom:0
+}
+
 /* responsive - 800px */
-#pwfv-parent[data-responsive*="800"] .pwfv-maingrid.two-cols > div{
+#pwfv-parent[data-responsive*="r800"] .pwfv-maingrid.two-cols > div{
     width:100%
 }
+
+#pwfv-parent[data-responsive*="r800"] .pwfv-navigation{
+    gap: 5px;
+}
+
+#pwfv-parent[data-responsive*="r800"] .pwfv-navigation-item{
+    font-size: 14px
+}
+
+#pwfv-parent[data-responsive*="r800"] .pwfv-navigation-item span{
+    width: 20px;
+    height: 20px;
+    font-size: 15px;
+    line-height:20px;
+}
+
+/* responsive - 600px */
+
+#pwfv-parent[data-responsive*="r600"] .pwfv-navigation{
+    grid-template-columns: 1fr 1fr;
+}
+
+#pwfv-parent[data-responsive*="r600"] .pwfv-navigation{
+    grid-template-columns: 1fr;
+}
+
+
+
+
 `};

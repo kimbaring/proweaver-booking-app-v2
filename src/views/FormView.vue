@@ -3,7 +3,7 @@ import {onMounted, ref,watch,computed} from 'vue'
 import {axios} from '../functions'
 import TemplatedFields from '../components/TemplatedFields.vue'
 import {formData,formCSS} from '../defaults'
-import icons from '../assets/icons'
+import icons,{iconsSolid} from '../assets/icons'
 import SchedulerSelect from '../components/SchedulerSelect.vue'
 import RequestBindedFields from '../components/RequestBindedFields.vue'
 
@@ -13,7 +13,7 @@ let props = defineProps({
 })
 
 let form = ref(null)
-
+let renderedRecaptcha = ref(false);
 let currentPageIndex = ref(0)
 let progressIndex = ref(0);
 let formElement = ref(null)
@@ -24,6 +24,9 @@ let currentPageRequiredLabels = ref([]);
 let currentPageRequiredInvalids = ref([]);
 let omittedRBFields = ref([]);
 let pageColumnResponsive = ref(1);
+let formSubmitted = ref(false);
+let recaptchaSuccess = ref(false);
+let isRecaptchaLoaded = ref(false)
 const currentPage = computed(()=>{
     pageColumnResponsive.value = form.value.pages[currentPageIndex.value].page_columns;
     return form.value.pages[currentPageIndex.value]
@@ -40,7 +43,6 @@ function checkGetter(){
     if(getparams.get('form_id') == null || props.form != null) {
         if(props.form == null) form.value = formData;
         else form.value = props.form
-        console.log(form.value)
         let newStyle = document.createElement('style');
         newStyle.id = "pwfv-customcss";
         newStyle.textContent = form.value.design.css ?? formCSS(form.value.design.primaryColor,form.value.design.pagenavDesign)
@@ -108,7 +110,8 @@ function organizeInput(id,fieldLabel,fieldValue,order){
     }
 }
 
-function fieldLoaded(id,label){
+function fieldLoaded(id,order,label){
+    id = `pwp${currentPageIndex.value}_pwo${order}_${id}`;
     let index = currentPageRequired.value.indexOf(id);
     if(index >= 0) return;
     requiredFields.value.push({id,label});
@@ -119,11 +122,30 @@ function fieldLoaded(id,label){
 onMounted(()=>{
     checkGetter()
     if(props.page != 0) currentPageIndex.value = props.page;
+    let gRecaptchaOnExists =  setInterval(()=>{
+        if(document.querySelector('.g-recaptcha') == null) return;
+
+        try{
+            clearInterval(gRecaptchaOnExists);
+
+            grecaptcha.render("recaptcha", {
+                sitekey: '6LcHeGAkAAAAAJJ--spGuBQszxHROuBbMBsJrRBB',
+                callback: function() {
+                    console.log('recaptcha callback');
+                }
+            });
+        }catch(err){
+            
+        }
+        
+    },100)
+    return;
 })
 
 
 function beforePageChange(add,jumpTo=null){
     currentPageRequiredInvalids.value = [];
+    console.log(currentPageRequired.value,userInput.value)
     if(currentPageRequired.value.length > 0 && (add >= 1 || (jumpTo != null && jumpTo > currentPageIndex.value)) ){
         currentPageRequired.value.forEach((el,i)=>{
             let index = userInput.value.findIndex(el2=>{
@@ -152,7 +174,6 @@ function beforePageChange(add,jumpTo=null){
 }
 
 function submit(){
-    console.log(requiredFields.value,userInput.value)
     currentPageRequiredInvalids.value = [];
     requiredFields.value.forEach(el=>{
         let index = userInput.value.findIndex(el2=>{
@@ -165,39 +186,80 @@ function submit(){
                 label: el.label
             })
     })
-    console.log(currentPageRequiredInvalids.value);
+    if(currentPageRequiredInvalids.value.length > 0) return;
+    let locationIndex = userInput.value.findIndex(el=>el.id.includes('pwid=location'))
+    let workerIndex = userInput.value.findIndex(el=>el.id.includes('pwid=worker'))
+    let servicesIndex = userInput.value.findIndex(el=>el.id.includes('pwid=services'))
+    let scheduleIndex = userInput.value.findIndex(el=>el.id.includes('pwid=scheduler'))
+    let location = userInput.value[locationIndex] ?? '';
+    let worker = userInput.value[workerIndex] ?? '';
+    let services = userInput.value[servicesIndex] ?? '';
+    let schedule = userInput.value[scheduleIndex] ?? '';
+
+    if(grecaptcha.getResponse().length == 0){
+        alert('Please complete the reCAPTCHA!')
+        return;
+    }
+
+    axios.post('appointments/create',null,{
+        book_appointment_locationname:location.value ?? '',
+        book_appointment_servicesname:services.value ?? '',
+        book_appointment_worker:worker.value ?? '',
+        book_appointment_scheduleid:schedule.value ?? '',
+        book_appointment_custominputs: JSON.stringify(userInput.value)
+    }).then(res=>{
+        if(res.data == null || !res.data.success){
+            alert('Something went wrong! You may contact the website admin and inform them about this problem. Your feedback will be appreciated!')
+            return;
+        }
+        formSubmitted.value = true;
+
+    });
 }
 
 
 
 async function checkResponsive(){
     pageColumnResponsive.value = currentPage.value.page_columns
+
+    const responsiveClasser = ()=>{
+        document.getElementById('pwfv-parent').dataset.responsive=""
+        if(document.getElementById('pwfv-parent').offsetWidth <= 400)
+            document.getElementById('pwfv-parent').dataset.responsive = document.getElementById('pwfv-parent').dataset.responsive + "r400 ";
+
+        if(document.getElementById('pwfv-parent').offsetWidth <= 600)
+            document.getElementById('pwfv-parent').dataset.responsive = document.getElementById('pwfv-parent').dataset.responsive + "r600 ";
+        if(document.getElementById('pwfv-parent').offsetWidth <= 800){
+            document.getElementById('pwfv-parent').dataset.responsive= document.getElementById('pwfv-parent').dataset.responsive + "r800 ";
+            pageColumnResponsive.value = 1;
+        }
+        if(document.getElementById('pwfv-parent').offsetWidth <= 1000)
+            document.getElementById('pwfv-parent').dataset.responsive = document.getElementById('pwfv-parent').dataset.responsive + "r1000 ";
+        if(document.getElementById('pwfv-parent').offsetWidth <= 1200)
+            document.getElementById('pwfv-parent').dataset.responsive = document.getElementById('pwfv-parent').dataset.responsive + "r1200 ";
+        if(document.getElementById('pwfv-parent').offsetWidth <= 1400)
+            document.getElementById('pwfv-parent').dataset.responsive = document.getElementById('pwfv-parent').dataset.responsive + "r1400 ";
+
+        if(window.parent.document.getElementById('pwform') != null){
+            new ResizeObserver(()=>{
+                window.parent.document.getElementById('pwform').style.width='100%' 
+                window.parent.document.getElementById('pwform').style.overflow='hidden' 
+                window.parent.document.getElementById('pwform').style.border='none' 
+                window.parent.document.getElementById('pwform').style.height=document.body.offsetHeight+'px' 
+            }).observe(document.body)
+        }
+        
+    }
     if(document.getElementById('pwfv-parent') == null){
         let parentChecker =  setInterval(()=>{
             if(document.getElementById('pwfv-parent') == null) return;
             clearInterval(parentChecker);
-            document.getElementById('pwfv-parent').dataset.responsive=""
-            if(document.getElementById('pwfv-parent').offsetWidth < 600)
-                document.getElementById('pwfv-parent').dataset.responsive = document.getElementById('pwfv-parent').dataset.responsive + "600 ";
-            if(document.getElementById('pwfv-parent').offsetWidth < 800){
-                document.getElementById('pwfv-parent').dataset.responsive= document.getElementById('pwfv-parent').dataset.responsive + "800 ";
-                pageColumnResponsive.value = 1;
-            }
-            if(document.getElementById('pwfv-parent').offsetWidth < 1000)
-                document.getElementById('pwfv-parent').dataset.responsive = document.getElementById('pwfv-parent').dataset.responsive + "1000 ";
             
+            responsiveClasser();
         },100)
         return;
     }
-    document.getElementById('pwfv-parent').dataset.responsive=""
-    if(document.getElementById('pwfv-parent').offsetWidth < 600)
-        document.getElementById('pwfv-parent').dataset.responsive = document.getElementById('pwfv-parent').dataset.responsive + "600 ";
-    if(document.getElementById('pwfv-parent').offsetWidth < 800){
-        document.getElementById('pwfv-parent').dataset.responsive = document.getElementById('pwfv-parent').dataset.responsive + "800 ";
-        pageColumnResponsive.value = 1;
-    }
-    if(document.getElementById('pwfv-parent').offsetWidth < 1000)
-        document.getElementById('pwfv-parent').dataset.responsive = document.getElementById('pwfv-parent').dataset.responsive + "1000 ";
+    responsiveClasser();
 }
 
 
@@ -207,7 +269,7 @@ async function checkResponsive(){
         <div class="pwfv-header">
             {{ form.form_title }}
         </div>
-        <div class="pwfv-body">
+        <div class="pwfv-body" v-if="!formSubmitted">
             <div class="pwfv-navigation" v-if="form.pages.length > 1">
                 <div class="pwfv-navigation-item" :class="{active:currentPageIndex == i,done:progressIndex > i}" v-for="p,i in form.pages" :key="i" @click="beforePageChange(null,i)">
                     <span>{{progressIndex > i ? '&check;' : i+1}}</span>
@@ -219,7 +281,7 @@ async function checkResponsive(){
                     <div class="pwfv-fielditem" v-for="f,i in filteredByColumn(1)" :key="i">
                         <!-- field renderer start-->
                         <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes(getId('pwid='+f.endpoint.split('/')[0],i))">
-                            {{ fieldLoaded(getId('pwid='+f.endpoint.split('/')[0],i),f.text)}}
+                            {{ fieldLoaded('pwid='+f.endpoint.split('/')[0],i,f.text)}}
                             <label>{{ f.text }} <span>*</span></label>
                             <RequestBindedFields
                                 :endpoint="f.endpoint"
@@ -231,7 +293,7 @@ async function checkResponsive(){
                             />
                         </div>
                         <div v-if="f.content_type == 'scheduler'">
-                            {{ fieldLoaded(getId('pwid=scheduler',i),f.text)}}
+                            {{ fieldLoaded('pwid=scheduler',i,f.text)}}
                             <label>{{ f.text }} <span>*</span></label>
                             <SchedulerSelect
                                 :schedule="getFieldValue(getId('pwid=scheduler',i))"
@@ -240,7 +302,7 @@ async function checkResponsive(){
                         </div>
                         <div v-if="f.content_type == 'text'" v-html="f.text" :style="f.styles"></div>
                         <div v-if="f.content_type == 'field' && f.type != 'checkbox'">
-                            {{ f.required ? fieldLoaded(getId(f.name,i),f.label) : ''}}
+                            {{ f.required ? fieldLoaded(f.name,i,f.label) : ''}}
                             <label>{{ f.label }} <span v-if="f.required">*</span></label>
                             <TemplatedFields 
                             :type="f.type"
@@ -258,7 +320,7 @@ async function checkResponsive(){
                             />
                         </div>
                         <div v-if="f.content_type == 'field' && f.type == 'checkbox'">
-                            {{ f.required ? fieldLoaded(getId(f.name,i),f.label) : ''}}
+                            {{ f.required ? fieldLoaded(f.name,i,f.label) : ''}}
                             <TemplatedFields 
                             :type="f.type"
                             :name="f.name"
@@ -282,7 +344,7 @@ async function checkResponsive(){
                     <div class="pwfv-fielditem" v-for="f,i in filteredByColumn(2)" :key="i">
                         <!-- field renderer start-->
                         <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes(getId('pwid='+f.endpoint.split('/')[0],i))">
-                            {{ fieldLoaded(getId('pwid='+f.endpoint.split('/')[0],i),f.text)}}
+                            {{ fieldLoaded('pwid='+f.endpoint.split('/')[0],i,f.text)}}
                             <label>{{ f.text }} <span>*</span></label>
                             <RequestBindedFields
                                 :endpoint="f.endpoint"
@@ -295,7 +357,7 @@ async function checkResponsive(){
                             />
                         </div>
                         <div v-if="f.content_type == 'scheduler'">
-                            {{ fieldLoaded(getId('pwid=scheduler',i),f.text) }}
+                            {{ fieldLoaded('pwid=scheduler',i,f.text) }}
                             <label>{{ f.text }} <span>*</span></label>
                             <SchedulerSelect
                                 :schedule="getFieldValue(getId('pwid=scheduler'))"
@@ -304,7 +366,7 @@ async function checkResponsive(){
                         </div>
                         <div v-if="f.content_type == 'text'" v-html="f.text" :style="f.styles"></div>
                         <div v-if="f.content_type == 'field' && f.type != 'checkbox'">
-                            {{ f.required ? fieldLoaded(getId(f.name,i),f.label) : ''}}
+                            {{ f.required ? fieldLoaded(f.name,i,f.label) : ''}}
                             <label>{{ f.label }} <span v-if="f.required">*</span></label>
                             <TemplatedFields 
                             :type="f.type"
@@ -322,7 +384,7 @@ async function checkResponsive(){
                             />
                         </div>
                         <div v-if="f.content_type == 'field' && f.type == 'checkbox'">
-                            {{ f.required ? fieldLoaded(getId(f.name,i),f.label) : ''}}
+                            {{ f.required ? fieldLoaded(f.name,i,f.label) : ''}}
                             <TemplatedFields 
                             :type="f.type"
                             :name="f.name"
@@ -349,11 +411,20 @@ async function checkResponsive(){
                     </strong>
                 </div>
                 <div class="pwfv-finalfields">
+                    
                     <button @click="beforePageChange(-1)" v-if="currentPageIndex != 0"><i v-html="icons.arrowLeft"></i> Prev</button>
                     <button @click="beforePageChange(1)" v-if="currentPageIndex != form.pages.length -1">Next <i v-html="icons.arrowRight"></i></button>
+                    <div id="recaptcha" v-show="currentPageIndex == form.pages.length -1" class="g-recaptcha" data-sitekey="6LcHeGAkAAAAAJJ--spGuBQszxHROuBbMBsJrRBB"></div>
                     <button @click="submit()" v-if="currentPageIndex == form.pages.length -1 " class="pwfv-submit">Submit</button>
                 </div>
             </div>
+        </div>
+        <div class="pwfv-success" v-if="formSubmitted">
+            <div class="pwfv-success-box">
+                <div class="pwfv-success-checkmark"><i v-html="iconsSolid.check"></i></div>
+                Your entry has been successfully submitted. We will process it and update you as soon as possible.
+            </div>
+            
         </div>
    </div>
 </template>
