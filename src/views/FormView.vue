@@ -25,8 +25,7 @@ let currentPageRequiredInvalids = ref([]);
 let omittedRBFields = ref([]);
 let pageColumnResponsive = ref(1);
 let formSubmitted = ref(false);
-let recaptchaSuccess = ref(false);
-let isRecaptchaLoaded = ref(false)
+let currentPageFieldIds = ref([]);
 const currentPage = computed(()=>{
     pageColumnResponsive.value = form.value.pages[currentPageIndex.value].page_columns;
     return form.value.pages[currentPageIndex.value]
@@ -35,7 +34,28 @@ const currentPage = computed(()=>{
 
 watch(()=>currentPageIndex.value,()=>{
     currentPageRequired.value = []
+    setCurrentPageRequired();
+    
 })
+
+function setCurrentPageRequired(){
+    currentPage.value.page_fields.forEach((el,i)=>{
+        if(el.content_type=='rbfield' || el.content_type == 'scheduler' || el.required){
+            if(el.content_type=='rbfield') currentPageRequired.value.push(`pwp${currentPageIndex.value}_pwo${i}_pwid=${el.endpoint.split('/')[0]}`)
+            else if(el.content_type=='scheduler') currentPageRequired.value.push(`pwp${currentPageIndex.value}_pwo${i}_pwid=scheduler`)
+            else if(el.content_type=='field') currentPageRequired.value.push(`pwp${currentPageIndex.value}_pwo${i}_${el.name}`)
+
+            if(el.content_type=='rbfield' || el.content_type=='scheduler') currentPageRequiredLabels.value.push(el.text);
+            else if(el.content_type=='field') currentPageRequiredLabels.value.push(el.label);
+
+            
+        }
+
+        if(el.content_type=='rbfield') currentPageFieldIds.value.push(`pwp${currentPageIndex.value}_pwo${i}_pwid=${el.endpoint.split('/')[0]}`)
+        else if(el.content_type=='scheduler') currentPageFieldIds.value.push(`pwp${currentPageIndex.value}_pwo${i}_pwid=scheduler`)
+        else if(el.content_type=='field') currentPageFieldIds.value.push(`pwp${currentPageIndex.value}_pwo${i}_${el.name}`)
+    });
+}
 
 
 function checkGetter(){
@@ -48,6 +68,7 @@ function checkGetter(){
         newStyle.textContent = form.value.design.css ?? formCSS(form.value.design.primaryColor,form.value.design.pagenavDesign)
         if(document.getElementById('pwfv-customcss') != null) document.getElementById('pwfv-customcss').remove()
         document.body.appendChild(newStyle)
+        setCurrentPageRequired()
         window.onresize = ()=>checkResponsive()
         checkResponsive()
         return;
@@ -61,6 +82,7 @@ function checkGetter(){
         newStyle.textContent = form.value.design.css ?? formCSS(form.value.design.primaryColor,form.value.design.pagenavDesign)
         if(document.getElementById('pwfv-customcss') != null) document.getElementById('pwfv-customcss').remove()
         document.body.appendChild(newStyle)
+        setCurrentPageRequired()
         window.onresize = ()=>checkResponsive()
         checkResponsive()
     });
@@ -73,27 +95,29 @@ function filteredByColumn(col){
     else return currentPage.value.page_fields.filter(el=>el.column == col) 
 }
 
-function getId(id,order){
-    return `pwp${currentPageIndex.value}_pwo${order}_${id}`
+function getId(id){
+    let index = currentPageFieldIds.value.findIndex(el=>el.includes(id))
+    return currentPageFieldIds.value[index]
 }
 
-function deleteRBField(id,order){
-    let index = currentPageRequired.value.findIndex(el=>el ==`pwp${currentPageIndex.value}_pwo${order}_${id}`)
-    requiredFields.value.splice(requiredFields.value.findIndex(el=>el.id==`pwp${currentPageIndex.value}_pwo${order}_${id}`), 1)
+function deleteRBField(id){
+    let index = currentPageRequired.value.findIndex(el=>el.includes(id))
+    let deletedId = currentPageRequired.value[index];
+    requiredFields.value.splice(requiredFields.value.findIndex(el=>el.includes(id)), 1)
     currentPageRequired.value.splice(index,1);
     currentPageRequiredLabels.value.splice(index,1);
-    omittedRBFields.value.push(`pwp${currentPageIndex.value}_pwo${order}_${id}`)
+    omittedRBFields.value.push(deletedId)
 }
 
 function getFieldValue(id){
-    let index = userInput.value.findIndex(el=>el.id == id);
+    let index = userInput.value.findIndex(el=>el.id.includes(id));
     if(index == -1) return null;
     return userInput.value[index].value
 }
 
-function organizeInput(id,fieldLabel,fieldValue,order){
-    let fieldId = `pwp${currentPageIndex.value}_pwo${order}_${id}`
-    let index = userInput.value.findIndex(el=>el.id == fieldId);
+function organizeInput(id,fieldLabel,fieldValue){
+    let fieldId = currentPageFieldIds.value[currentPageFieldIds.value.findIndex(el=>el.includes(id))];
+    let index = userInput.value.findIndex(el=>el.id.includes(fieldId));
     if(index == -1){
         userInput.value.push({
             id:fieldId,
@@ -110,14 +134,6 @@ function organizeInput(id,fieldLabel,fieldValue,order){
     }
 }
 
-function fieldLoaded(id,order,label){
-    id = `pwp${currentPageIndex.value}_pwo${order}_${id}`;
-    let index = currentPageRequired.value.indexOf(id);
-    if(index >= 0) return;
-    requiredFields.value.push({id,label});
-    currentPageRequired.value.push(id);
-    currentPageRequiredLabels.value.push(label);
-}
 
 onMounted(()=>{
     checkGetter()
@@ -145,6 +161,7 @@ onMounted(()=>{
 
 function beforePageChange(add,jumpTo=null){
     currentPageRequiredInvalids.value = [];
+    console.log(userInput.value)
     console.log(currentPageRequired.value,userInput.value)
     if(currentPageRequired.value.length > 0 && (add >= 1 || (jumpTo != null && jumpTo > currentPageIndex.value)) ){
         currentPageRequired.value.forEach((el,i)=>{
@@ -267,7 +284,8 @@ async function checkResponsive(){
 <template>
    <div id="pwfv-parent" ref="formElement" v-if="form != null" data-responsive="">
         <div class="pwfv-header">
-            {{ form.form_title }}
+            {{ form.form_title }} 
+                
         </div>
         <div class="pwfv-body" v-if="!formSubmitted">
             <div class="pwfv-navigation" v-if="form.pages.length > 1">
@@ -277,32 +295,32 @@ async function checkResponsive(){
                 </div>
             </div>
             <div class="pwfv-maingrid " :class="{'two-cols':currentPage.page_columns == 2}">
+                <p class="pwfv-required-reminder" v-if="currentPageRequired.length > 0">Required Fields are marked with (*)</p>
                 <div class="pwfv-maingrid-1">
                     <div class="pwfv-fielditem" v-for="f,i in filteredByColumn(1)" :key="i">
                         <!-- field renderer start-->
-                        <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes(getId('pwid='+f.endpoint.split('/')[0],i))">
-                            {{ fieldLoaded('pwid='+f.endpoint.split('/')[0],i,f.text)}}
+                        <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes()">
+                            
                             <label>{{ f.text }} <span>*</span></label>
                             <RequestBindedFields
                                 :endpoint="f.endpoint"
                                 :based="f.based"
                                 :type="f.type"
-                                :value="getFieldValue(getId('pwid='+f.endpoint.split('/')[0],i))"
-                                @onResult="e=>organizeInput('pwid='+f.endpoint.split('/')[0],f.text,e,i)"
-                                @onEmpty="deleteRBField('pwid='+f.endpoint.split('/')[0],i)"
+                                :value="getFieldValue('pwid='+f.endpoint.split('/')[0])"
+                                @onResult="e=>organizeInput('pwid='+f.endpoint.split('/')[0],f.text,e)"
+                                @onEmpty="deleteRBField('pwid='+f.endpoint.split('/')[0])"
                             />
                         </div>
                         <div v-if="f.content_type == 'scheduler'">
-                            {{ fieldLoaded('pwid=scheduler',i,f.text)}}
+                            
                             <label>{{ f.text }} <span>*</span></label>
                             <SchedulerSelect
-                                :schedule="getFieldValue(getId('pwid=scheduler',i))"
-                                @onResult="e=>organizeInput('pwid=scheduler',f.text,e,i)"
+                                :schedule="getFieldValue('pwid=scheduler')"
+                                @onResult="e=>organizeInput('pwid=scheduler',f.text,e)"
                             />
                         </div>
                         <div v-if="f.content_type == 'text'" v-html="f.text" :style="f.styles"></div>
                         <div v-if="f.content_type == 'field' && f.type != 'checkbox'">
-                            {{ f.required ? fieldLoaded(f.name,i,f.label) : ''}}
                             <label>{{ f.label }} <span v-if="f.required">*</span></label>
                             <TemplatedFields 
                             :type="f.type"
@@ -312,15 +330,14 @@ async function checkResponsive(){
                             :required="f.required"
                             :placeholder="f.placeholder"
                             :values="f.values"
-                            :select="f.type=='checkbox-group' ? getFieldValue(getId(f.name,i)) : null"
+                            :select="f.type=='checkbox-group' ? getFieldValue(f.name) : null"
                             :options="f.options"
                             :index="f.index"
-                            :value="getFieldValue(getId(f.name,i))"
-                            @onResult="e=>organizeInput(f.name,f.label,e,i)"
+                            :value="getFieldValue(f.name)"
+                            @onResult="e=>organizeInput(f.name,f.label,e)"
                             />
                         </div>
                         <div v-if="f.content_type == 'field' && f.type == 'checkbox'">
-                            {{ f.required ? fieldLoaded(f.name,i,f.label) : ''}}
                             <TemplatedFields 
                             :type="f.type"
                             :name="f.name"
@@ -329,11 +346,11 @@ async function checkResponsive(){
                             :required="f.required"
                             :placeholder="f.placeholder"
                             :values="f.values"
-                            :select="f.type=='checkbox-group' ? getFieldValue(getId(f.name,i)) : null"
+                            :select="f.type=='checkbox-group' ? getFieldValue(f.name) : null"
                             :options="f.options"
                             :index="f.index"
-                            :value="getFieldValue(getId(f.name,i))"
-                            @onResult="e=>organizeInput(f.name,f.label,e,i)"
+                            :value="getFieldValue(f.name)"
+                            @onResult="e=>organizeInput(f.name,f.label,e)"
                             />
                             <label :for="f.name" class="pwfvf-checkbox-label">{{ f.label }} <span v-if="f.required">*</span></label>
                         </div>
@@ -344,29 +361,27 @@ async function checkResponsive(){
                     <div class="pwfv-fielditem" v-for="f,i in filteredByColumn(2)" :key="i">
                         <!-- field renderer start-->
                         <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes(getId('pwid='+f.endpoint.split('/')[0],i))">
-                            {{ fieldLoaded('pwid='+f.endpoint.split('/')[0],i,f.text)}}
+                            
                             <label>{{ f.text }} <span>*</span></label>
                             <RequestBindedFields
                                 :endpoint="f.endpoint"
                                 :based="f.based"
                                 :type="f.type"
-                                
-                                :value="getFieldValue(getId('pwid='+f.endpoint.split('/')[0],i))"
-                                @onResult="e=>organizeInput('pwid='+f.endpoint.split('/')[0],f.text,e,i)"
-                                @onEmpty="deleteRBField('pwid='+f.endpoint.split('/')[0],i)"
+                                :value="getFieldValue('pwid='+f.endpoint.split('/')[0])"
+                                @onResult="e=>organizeInput('pwid='+f.endpoint.split('/')[0],f.text,e)"
+                                @onEmpty="deleteRBField('pwid='+f.endpoint.split('/')[0])"
                             />
                         </div>
                         <div v-if="f.content_type == 'scheduler'">
-                            {{ fieldLoaded('pwid=scheduler',i,f.text) }}
+                            
                             <label>{{ f.text }} <span>*</span></label>
                             <SchedulerSelect
-                                :schedule="getFieldValue(getId('pwid=scheduler'))"
-                                @onResult="e=>organizeInput('pwid=scheduler',f.text,e,i)"
+                                :schedule="getFieldValue('pwid=scheduler')"
+                                @onResult="e=>organizeInput('pwid=scheduler',f.text,e)"
                             />
                         </div>
                         <div v-if="f.content_type == 'text'" v-html="f.text" :style="f.styles"></div>
                         <div v-if="f.content_type == 'field' && f.type != 'checkbox'">
-                            {{ f.required ? fieldLoaded(f.name,i,f.label) : ''}}
                             <label>{{ f.label }} <span v-if="f.required">*</span></label>
                             <TemplatedFields 
                             :type="f.type"
@@ -376,15 +391,14 @@ async function checkResponsive(){
                             :required="f.required"
                             :placeholder="f.placeholder"
                             :values="f.values"
-                            :select="f.type=='checkbox-group' ? getFieldValue(getId(f.name,i)) : null"
+                            :select="f.type=='checkbox-group' ? getFieldValue(f.name) : null"
                             :options="f.options"
                             :index="f.index"
-                            :value="getFieldValue(getId(f.name,i))"
-                            @onResult="e=>organizeInput(f.name,f.label,e,i)"
+                            :value="getFieldValue(f.name)"
+                            @onResult="e=>organizeInput(f.name,f.label,e)"
                             />
                         </div>
                         <div v-if="f.content_type == 'field' && f.type == 'checkbox'">
-                            {{ f.required ? fieldLoaded(f.name,i,f.label) : ''}}
                             <TemplatedFields 
                             :type="f.type"
                             :name="f.name"
@@ -393,14 +407,15 @@ async function checkResponsive(){
                             :required="f.required"
                             :placeholder="f.placeholder"
                             :values="f.values"
-                            :select="f.type=='checkbox-group' ? getFieldValue(getId(f.name,i)) : null"
+                            :select="f.type=='checkbox-group' ? getFieldValue(f.name) : null"
                             :options="f.options"
                             :index="f.index"
-                            :value="getFieldValue(getId(f.name,i))"
-                            @onResult="e=>organizeInput(f.name,f.label,e,i)"
+                            :value="getFieldValue(f.name)"
+                            @onResult="e=>organizeInput(f.name,f.label,e)"
                             />
                             <label :for="f.name" class="pwfvf-checkbox-label">{{ f.label }} <span v-if="f.required">*</span></label>
                         </div>
+                        <!-- field renderer end-->
                         <!-- field renderer end-->
                     </div>
                 </div>
@@ -409,7 +424,7 @@ async function checkResponsive(){
                     <strong v-for="cpri,i in currentPageRequiredInvalids" :key="i">
                         {{ cpri.label }}{{ i != currentPageRequiredInvalids.length - 1 ? ', ' : ' ' }}
                     </strong>
-                </div>
+                </div>    
                 <div class="pwfv-finalfields">
                     
                     <button @click="beforePageChange(-1)" v-if="currentPageIndex != 0"><i v-html="icons.arrowLeft"></i> Prev</button>

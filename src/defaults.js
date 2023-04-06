@@ -636,6 +636,12 @@ textarea{white-space: pre-wrap;height:unset;min-height: 70px;}
     border-bottom: 1px solid #ddd;
 }
 
+.pwfv-required-reminder{
+    font-size: 13px;
+    width: 100%;
+    color: #A00;
+}
+
 .pwfvf-scheduler-header h2{
     font-weight: 700;
     font-size: 20px;
