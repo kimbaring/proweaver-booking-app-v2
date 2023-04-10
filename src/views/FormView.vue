@@ -34,6 +34,8 @@ const currentPage = computed(()=>{
 
 watch(()=>currentPageIndex.value,()=>{
     currentPageRequired.value = []
+    currentPageRequiredLabels.value = [];
+    omittedRBFields.value = [];
     setCurrentPageRequired();
     
 })
@@ -150,6 +152,8 @@ onMounted(()=>{
                     console.log('recaptcha callback');
                 }
             });
+            
+            window.parent.document.getElementById('pwform').style.height=document.body.offsetHeight+'px' 
         }catch(err){
             
         }
@@ -161,19 +165,23 @@ onMounted(()=>{
 
 function beforePageChange(add,jumpTo=null){
     currentPageRequiredInvalids.value = [];
-    console.log(userInput.value)
-    console.log(currentPageRequired.value,userInput.value)
     if(currentPageRequired.value.length > 0 && (add >= 1 || (jumpTo != null && jumpTo > currentPageIndex.value)) ){
         currentPageRequired.value.forEach((el,i)=>{
             let index = userInput.value.findIndex(el2=>{
-                if(typeof el2.value == 'object') el2.value = JSON.parse(JSON.stringify(el2.value));
+                if(typeof el2.value == 'object' && el2.id == el){
+                    el2.value = JSON.parse(JSON.stringify(el2.value));  
+                    if(el2.value == null || el2.value.length == 0) return false;
+                    else return true;
+                } 
                 return el2.id == el && !['',null,[]].includes(el2.value)
             });
-            if(index == -1) 
+            if(index == -1) {
                 currentPageRequiredInvalids.value.push({
                     id: el,
                     label: currentPageRequiredLabels.value[i]
                 })
+            }
+                
         })
         if(currentPageRequiredInvalids.value.length > 0) return;
     }
@@ -259,10 +267,11 @@ async function checkResponsive(){
 
         if(window.parent.document.getElementById('pwform') != null){
             new ResizeObserver(()=>{
+                console.log('test');
                 window.parent.document.getElementById('pwform').style.width='100%' 
                 window.parent.document.getElementById('pwform').style.overflow='hidden' 
                 window.parent.document.getElementById('pwform').style.border='none' 
-                window.parent.document.getElementById('pwform').style.height=document.body.offsetHeight+'px' 
+                window.parent.document.getElementById('pwform').style.height=(document.body.offsetHeight < 500) ? 500 : document.body.offsetHeight+'px'
             }).observe(document.body)
         }
         
@@ -299,7 +308,7 @@ async function checkResponsive(){
                 <div class="pwfv-maingrid-1">
                     <div class="pwfv-fielditem" v-for="f,i in filteredByColumn(1)" :key="i">
                         <!-- field renderer start-->
-                        <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes()">
+                        <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes(getId('pwid='+f.endpoint.split('/')[0],i))">
                             
                             <label>{{ f.text }} <span>*</span></label>
                             <RequestBindedFields
@@ -316,6 +325,7 @@ async function checkResponsive(){
                             <label>{{ f.text }} <span>*</span></label>
                             <SchedulerSelect
                                 :schedule="getFieldValue('pwid=scheduler')"
+                                :service="getFieldValue('pwid=services')"
                                 @onResult="e=>organizeInput('pwid=scheduler',f.text,e)"
                             />
                         </div>
@@ -426,10 +436,11 @@ async function checkResponsive(){
                     </strong>
                 </div>    
                 <div class="pwfv-finalfields">
-                    
+                    <div class="pwfv-recaptcha-parent">                        
+                        <div id="recaptcha" v-show="currentPageIndex == form.pages.length -1" class="g-recaptcha" data-sitekey="6LcHeGAkAAAAAJJ--spGuBQszxHROuBbMBsJrRBB"></div>
+                    </div>
                     <button @click="beforePageChange(-1)" v-if="currentPageIndex != 0"><i v-html="icons.arrowLeft"></i> Prev</button>
                     <button @click="beforePageChange(1)" v-if="currentPageIndex != form.pages.length -1">Next <i v-html="icons.arrowRight"></i></button>
-                    <div id="recaptcha" v-show="currentPageIndex == form.pages.length -1" class="g-recaptcha" data-sitekey="6LcHeGAkAAAAAJJ--spGuBQszxHROuBbMBsJrRBB"></div>
                     <button @click="submit()" v-if="currentPageIndex == form.pages.length -1 " class="pwfv-submit">Submit</button>
                 </div>
             </div>

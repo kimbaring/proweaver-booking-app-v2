@@ -227,7 +227,6 @@ export default{
             this.lastFetch.y = this.cc.y;
             this.hasFetched = true;
             axios.post(`schedules/fetch?book_schedule_date>=${start}&book_schedule_date<=${end}`).then(res=>{
-                this.schedules = {}
                 if(!res.data.success) return;
                 res.data.result.forEach(el=>{
                     this.schedules[el.book_schedule_id] = {

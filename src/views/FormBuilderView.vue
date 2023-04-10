@@ -112,7 +112,7 @@ function deletePage(){
   let pagefields = JSON.parse(JSON.stringify(form.value.pages[pageToDelete].page_fields));
   let containsSpecialFields = false;
   pagefields.forEach(el=>{
-    if(['rbfield','scheduler'].includes(el.content_type)) containsSpecialFields = true;
+    if(['rbfield','scheduler','ext'].includes(el.content_type)) containsSpecialFields = true;
   })
   if(containsSpecialFields){
     alert('This page contains a RBField (Request Binded Field) or a Scheduler, both which are required fields. Please move it to the other page first before deleting the page.')
@@ -283,7 +283,6 @@ function cancelEdit(){
             {label:'Radio Group',value:'radio-group'},
             {label:'Select',value:'select'},
             {label:'Multi-line Text',value:'textarea'},
-            {label:'Paypal',value:'paypal'},
           ]"
           
           @onResult="e=>{queField.type = e;}"
@@ -546,6 +545,10 @@ function cancelEdit(){
 
       </div> <!-- builder aside -->
       <div> <!-- builder form view -->
+        <!-- <div class="bg-white p-5 mb-5">
+          <h2 class="font-bold text-xl mb-2">Extensions</h2>
+          PayPal
+        </div> -->
         <div class="bg-white p-5 mb-5" v-if="modifyCSSMode">
           <h2 class="font-bold text-xl mb-2">Custom CSS <small class="font-normal italic ">(for developers only, proceed with caution)</small></h2>
           <strong>Note:</strong> Modifying the CSS code below overrides <em class="font-bold text-slate-700 bg-slate-200">'Form Layout'</em> settings. Click <em class="font-bold text-slate-700 bg-slate-200">'Discard Custom CSS'</em> to restore default layout. Discarding custom CSS deletes code changes and cannot be undone

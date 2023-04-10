@@ -372,6 +372,7 @@ return `:root{
     gap:10px;
     justify-content:center;
     align-items:center;
+    flex-wrap: wrap;
 }
 
 .pwfv-finalfields button{
@@ -891,6 +892,12 @@ The supported width breakpoints are: 400, 600, 800, 1000, 1200, 1400
 */
 
 /* responsive - 1000px */
+#pwfv-parent[data-responsive*="r1000"] .pwfv-recaptcha-parent{
+    width: 100%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
 #pwfv-parent[data-responsive*="r1000"] .pwfv-body{
     flex-wrap: wrap
 }

@@ -6,6 +6,10 @@ export default{
     props:{
         schedule: {
             type: String
+        },
+        service:{
+            default:'',
+            type:String
         }
     },
     data(){
@@ -25,7 +29,9 @@ export default{
             if(['',null].includes(this.schedule)) return;
             this.fetching = true;
             this.chosenSchedule = this.schedule
-            let res = await axios.post('schedules/fetchAvailable?book_schedule_id='+this.schedule,'default')
+            let requestString = 'schedules/fetchAvailable?book_schedule_id='+this.schedule;
+            if(this.service != '' && this.service != null) requestString+='&book_schedule_service='+this.service    
+            let res = await axios.post(requestString,'default')
             if(res.data == null || !res.data.success) return;
             let date = new Date(res.data.result[0].book_schedule_date);
             this.cc.y = date.getFullYear();
@@ -36,6 +42,9 @@ export default{
             this.qd.d = date.getDate();
             this.buildCalendar();
             this.fetching = false;
+        },
+        service(){
+            this.fetchScheds();
         }
     },
     async mounted(){
@@ -51,7 +60,9 @@ export default{
         
         if(['',null].includes(this.schedule)) return;
         this.fetching = true;
-        let res = await axios.post('schedules/fetchAvailable?book_schedule_id='+this.schedule,'default')
+        let requestString = 'schedules/fetchAvailable?book_schedule_id='+this.schedule;
+        if(this.service != '' && this.service != null) requestString+='&book_schedule_service='+this.service  
+        let res = await axios.post(requestString,'default')
         if(res.data == null || !res.data.success) return;
         date = new Date(res.data.result[0].book_schedule_date);
         this.cc.y = date.getFullYear();
@@ -92,14 +103,16 @@ export default{
             let date = new Date(this.cc.y,this.cc.m,this.cc.d);
             this.availDates = [];
             this.availableSchedules = [];
-            let res = await axios.post(`schedules/availableSchedulesWithinMonth?month=${this.cc.m+1}&year=${this.cc.y}`,'default');
+            let includeService = (this.service != '' && this.service != null) ? '&service='+this.service : ''
+            let res = await axios.post(`schedules/availableSchedulesWithinMonth?month=${this.cc.m+1}&year=${this.cc.y}${includeService}`,'default');
             if(res.data != null && res.data.success){
                 res.data.result.forEach(el=>{
                     this.availDates.push(el.book_schedule_date);
                 });    
             }
-
-            res = await axios.post('schedules/fetchAvailable?book_schedule_date='+dateFormat('%y-%M-%D',date.getTime()),'default')
+            
+            includeService = (this.service != '' && this.service != null) ? '&book_schedule_service='+this.service : ''
+            res = await axios.post('schedules/fetchAvailable?book_schedule_date='+dateFormat('%y-%M-%D',date.getTime())+includeService,'default')
             if(res.data != null && res.data.success){
                 res.data.result.forEach(el=>{
                     if(el.book_schedule_maxappointment < el.count_appointments) el.schedule_full = true;
@@ -147,7 +160,8 @@ export default{
                         }
                         this.fetching = true;
                         this.availableSchedules = [];
-                        let res = await axios.post('schedules/fetchAvailable?book_schedule_date='+dateFormat('%y-%M-%D',date.getTime()),'default')
+                        let includeService = (this.service != '' && this.service != null) ? '&book_schedule_service='+this.service : ''
+                        let res = await axios.post('schedules/fetchAvailable?book_schedule_date='+dateFormat('%y-%M-%D',date.getTime())+includeService,'default')
                         if(res.data != null && res.data.success){
                             res.data.result.forEach(el=>{
                                 if(el.book_schedule_maxappointment < el.count_appointments) el.schedule_full = true;
