@@ -22,7 +22,7 @@ export const fieldDefault = {
         placeholder: "This is a placeholder",
         values: [{label:'Sample Label',value:'Sample Value'}],
         select: [],
-        options: {},
+        options: {paypal_value_currency:'USD',paypal_value_basis:'fixed',paypal_value:1},
         index: "",
         styles: {}
     }
@@ -68,7 +68,7 @@ export const pageDefault = {
 export const formData = {
     "form_title":"New Form",
     "declare":{
-        "paypal":"asdasd"
+        paypalClientID:'Acr8x9sWvKkPBzfz5wqmwPcP3yGiq6qGoTn63WhUmbogdEtWG5-H-Cu0VH7WjGXoEuOuRFdHoBRQC61x'
     },
     "design":{
         primaryColor: '#446523',
@@ -361,6 +361,11 @@ return `:root{
     width:100%;
 }
 
+
+.pwfv-fieldlabel{
+    font-weight:bold;
+}
+
 .pwfv-maingrid.two-cols > div:not(.pwfv-finalfields):not(.pwfv-errormsg){
     width:48%;
 }
@@ -539,6 +544,35 @@ textarea{height: 150px;}
 .pwfvf-radio-group label.active:after{
     border: 5px solid var(--pwcss-contra-color);
 }
+
+.pwfv-paypalcont{
+    background: #e5f2ff;
+    padding: 20px;
+    max-width: 600px;
+    margin: 
+    20px auto;
+    border-radius: 5px;
+    border: 1px solid #70b8ff;
+}
+
+.pwfv-paypalcontheader{
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    font-weight: bold;
+    gap:10px;
+    align-items:center;
+}
+
+.pwfv-paypalcontheader label{
+    border-right: 1px solid #000;
+    flex-grow: 1;
+    padding-right: 10px;
+}
+
+.pwfv-paypalcontheader label h2 small{display: block;}
+.pwfv-paypalrequired{color:rgb(98, 25, 25);display: block;margin: 20px 0;}
+.pwfv-paypalcont.pwfv-paypalsuccess{background: #cfffcf;border:1px solid #6ca86c}
 
 .pwfvf-checkbox-group input, .pwfvf-radio-group input{
     float: right;

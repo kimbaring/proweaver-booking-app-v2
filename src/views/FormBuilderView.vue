@@ -8,6 +8,7 @@ import icons from '../assets/icons'
 import CodeMirror from '../components/CodeMirror.vue'
 import {axios} from '../functions'
 
+
 let form = ref(JSON.parse(JSON.stringify(formData)));
 let currentPageIndex = ref(0)
 let formRefresh = ref(false)
@@ -21,6 +22,9 @@ let queField = ref(null)
 let targetFieldIndex = ref(0)
 let targetPageIndex = ref(0)
 let editId = null;
+
+let manageExtensionsMode = ref(false);
+
 const currentPage = computed(()=>{
     return form.value.pages[currentPageIndex.value]
 });
@@ -54,7 +58,9 @@ function consoleLog(text){
   console.log(text)
 }
 
-watch(()=>form.value,()=>refreshForm(),{deep:true})
+watch(()=>form.value,(newVal,oldVal)=>{
+  refreshForm()
+},{deep:true})
 
 function refreshForm(){
     formRefresh.value = true;
@@ -283,6 +289,7 @@ function cancelEdit(){
             {label:'Radio Group',value:'radio-group'},
             {label:'Select',value:'select'},
             {label:'Multi-line Text',value:'textarea'},
+            {label:'PayPal',value:'paypal'},
           ]"
           
           @onResult="e=>{queField.type = e;}"
@@ -294,6 +301,70 @@ function cancelEdit(){
           placeholder="Enter field label"
           :value="queField.label"
           @onResult="e=>{queField.label = e;}"
+        />
+        <label for="pwfb-editfield-paypaltype" class="mt-2 mb-1 block" v-if="queField.type=='paypal'">Type</label>
+        <CustomField
+          v-if="queField.type=='paypal'"
+          name="pwfb-editfield-paypaltype"
+          type="radio-group"
+          placeholder="Enter field label"
+          columns="1fr 1fr"
+          :values="[
+            {label:'Fixed',value:'fixed'},
+            {label:'Service-Based',value:'service-based'}
+          ]"
+          :value="queField.options.paypal_value_basis"
+          @onResult="e=>{queField.options.paypal_value_basis = e;}"
+        />
+        <label for="pwfb-editfield-paypalcurrency" class="mt-2 mb-1 block" v-if="queField.type=='paypal'">Currency</label>
+        <CustomField
+          v-if="queField.type=='paypal'"
+          name="pwfb-editfield-paypalcurrency"
+          type="select"
+          placeholder="Enter field label"
+          columns="1fr 1fr"
+          :values="[
+            // {label:'Australian Dollar (AUD)', value:'AUD'},
+            // {label:'Brazilian Real (BRL)', value:'BRL'},
+            // {label:'Canadian Dollar (CAD)', value:'CAD'},
+            // {label:'Swiss Franc (CHF)', value:'CHF'},
+            // {label:'Czech Koruna (CZK)', value:'CZK'},
+            // {label:'Danish Krone (DKK)', value:'DKK'},
+            // {label:'Euro (EUR)', value:'EUR'},
+            // {label:'British Pound (GBP)', value:'GBP'},
+            // {label:'Hong Kong Dollar (HKD)', value:'HKD'},
+            // {label:'Hungarian Forint (HUF)', value:'HUF'},
+            // {label:'Israeli New Shekel (ILS)', value:'ILS'},
+            // {label:'Japanese Yen (JPY)', value:'JPY'},
+            // {label:'Malaysian Ringgit (MYR)', value:'MYR'},
+            // {label:'Mexican Peso (MXN)', value:'MXN'},
+            // {label:'Norwegian Krone (NOK)', value:'NOK'},
+            // {label:'New Zealand Dollar (NZD)', value:'NZD'},
+            // {label:'Philippine Peso (PHP)', value:'PHP'},
+            // {label:'Polish Zloty (PLN)', value:'PLN'},
+            // {label:'Russian Ruble (RUB)', value:'RUB'},
+            // {label:'Swedish Krona (SEK)', value:'SEK'},
+            // {label:'Singapore Dollar (SGD)', value:'SGD'},
+            // {label:'Thai Baht (THB)', value:'THB'},
+            // {label:'Taiwan New Dollar (TWD)', value:'TWD'},
+            {label:'United States Dollar (USD)', value:'USD'}
+          ]"
+          :value="queField.options.paypal_value_currency"
+          @onResult="e=>{queField.options.paypal_value_currency = e;}"
+        />
+        <label for="pwfb-editfield-label" class="mt-2 mb-1 block" v-if="queField.type=='paypal' && queField.options.paypal_value_basis == 'fixed'">Value</label>
+        <CustomField
+          v-if="queField.type=='paypal' && queField.options.paypal_value_basis == 'fixed'"
+          name="pwfb-editfield-label"
+          type="number"
+          placeholder="Enter PayPal Value (e.g. 20.00)"
+          columns="1fr 1fr"
+          :values="[
+            {label:'Fixed',value:'fixed'},
+            {label:'Service-Based',value:'service-based'}
+          ]"
+          :value="queField.options.paypal_value"
+          @onResult="e=>{queField.options.paypal_value = e;}"
         />
         <label v-if="['text','integer','number','telephone','email','textarea'].includes(queField.type)"
         for="pwfb-editfield-label" class="mt-2 mb-1 block">Placeholder</label>
@@ -461,6 +532,7 @@ function cancelEdit(){
           />
           </div>
           <div>
+            <button class="bg-blue-700 p-2 text-white rounded-md mr-2 hover:scale-105 active:scale-95 transition" @click="manageExtensionsMode = !manageExtensionsMode">Third-Party Credentials</button>
             <button class="bg-yellow-600 p-2 text-white rounded-md mr-2 hover:scale-105 active:scale-95 transition" @click="modifyCSS">Modify CSS</button>
             <button class="bg-green-600 p-2 text-white rounded-md mr-2 hover:scale-105 active:scale-95 transition" @click="saveChanges">Save Changes</button>
             <button class="bg-red-600 p-2 text-white rounded-md hover:scale-105 active:scale-95 transition" @click="cancelEdit">Cancel</button>
@@ -549,6 +621,17 @@ function cancelEdit(){
           <h2 class="font-bold text-xl mb-2">Extensions</h2>
           PayPal
         </div> -->
+        <div class="bg-white p-5 mb-5 text-gray-800" v-if="manageExtensionsMode">
+          <h2 class="font-bold text-xl mb-2">Third-Party Credentials</h2>
+            <label for="pwfbtpc-paypal" class="mb-1 block">PayPal Client ID</label>
+            <CustomField
+              name="pwfbtpc-paypal"
+              placeholder="Paste your PayPal Client ID here"
+              :value="form.declare.paypalClientID"
+              @onResult="e=>form.declare.paypalClientID = e"
+            />
+
+        </div>
         <div class="bg-white p-5 mb-5" v-if="modifyCSSMode">
           <h2 class="font-bold text-xl mb-2">Custom CSS <small class="font-normal italic ">(for developers only, proceed with caution)</small></h2>
           <strong>Note:</strong> Modifying the CSS code below overrides <em class="font-bold text-slate-700 bg-slate-200">'Form Layout'</em> settings. Click <em class="font-bold text-slate-700 bg-slate-200">'Discard Custom CSS'</em> to restore default layout. Discarding custom CSS deletes code changes and cannot be undone
@@ -561,7 +644,7 @@ function cancelEdit(){
           <button class="transition bg-red-700 text-white p-2 rounded-md hover:scale-105 active:scale-95 mr-2" @click="cancelCSSChanges">Cancel</button>
           <button class="transition bg-red-900 text-white p-2 rounded-md mr-2 hover:scale-105 active:scale-95" @click="discardCustomCSS">Discard Custom CSS</button>
         </div>
-        <form-view v-if="!formRefresh" class="" :form="form" :page="currentPageIndex"></form-view>
+        <form-view v-if="!formRefresh" class="" :form="JSON.parse(JSON.stringify(form))" :page="currentPageIndex"></form-view>
       </div> <!-- builder form view -->
     </div>
   </div>

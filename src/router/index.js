@@ -45,7 +45,7 @@ const router = createRouter({
     {
       path: '/test',
       name: 'test',
-      component: ()=> import('../components/RequestBindedFields.vue')
+      component: ()=> import('../components/ExtensionsManager.vue')
     },
   ]
 })

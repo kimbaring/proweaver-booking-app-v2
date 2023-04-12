@@ -38,7 +38,7 @@ export default({
         options:Object,
         columns:String,
         value: null,
-        values: Object,
+        values: null,
         select: Object,
         readonly: Boolean,
     },

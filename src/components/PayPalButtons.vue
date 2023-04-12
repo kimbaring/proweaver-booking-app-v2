@@ -1,0 +1,89 @@
+<script setup>
+import { onMounted, ref, watch } from 'vue';
+import { Paypal, axios } from '../functions';
+
+let props = defineProps({
+    service: {default:'',type:String},
+    paid: {default:'',type:String},
+    fieldData: {type:Object}
+});
+
+let emit = defineEmits(['onPayment','onLoaded','onEmpty']);
+
+let serviceDetails = ref({})
+let fieldData = ref(null)
+let refreshPayPalDiv = ref(false)
+
+watch(()=>props.service,()=>{
+    fetchServiceDetails()
+})
+
+function fetchServiceDetails(){
+    if(props.service == '' || props.service == null) return; 
+    axios.post('services/fetch?book_services_name='+props.service).then(res=>{
+        serviceDetails.value = res.data.result[0]
+        console.log(fieldData.value.options.paypal_value)
+        fieldData.value.options.paypal_value = serviceDetails.value.book_services_price
+        if([0,'',null].includes(fieldData.value.options.paypal_value)) {
+            emit('onEmpty')
+            return
+        }else{
+            emit('onLoaded')
+        }
+        refreshPayPal();
+    })
+}
+
+function refreshPayPal(){
+    refreshPayPalDiv.value = true;
+    setTimeout(()=>{
+        refreshPayPalDiv.value = false;
+        let payValue = fieldData.value.options.paypal_value
+        
+        Paypal.mountOn('#pwfv-paypalparent',payValue,fieldData.value.options.paypal_value_currency).then(res=>{
+            emit('onPayment',JSON.parse(JSON.stringify(payValue)))
+        })
+    },10)
+}
+
+onMounted(()=>{
+    fieldData.value = JSON.parse(JSON.stringify(props.fieldData))
+    if(fieldData.value != null && fieldData.value.options.paypal_value_basis == 'fixed') refreshPayPal();
+    else fetchServiceDetails()
+})
+
+</script>
+
+<template>
+    <div class="pwfv-paypalcont" v-if="['',null].includes(props.paid) && fieldData != null && fieldData.options.paypal_value != null && (fieldData.options.paypal_value_basis == 'fixed' || (fieldData.options.paypal_value_basis == 'service-based' && serviceDetails.book_services_price != null))">
+        <div class="pwfv-paypalcontheader">
+            <label class="pwfv-fieldlabel">
+                <h2> 
+                    <small>Payment For:</small>
+                    {{ fieldData.options.paypal_value_basis == 'fixed' ? fieldData.label : props.service }}
+                </h2>
+            </label>
+            <span>{{fieldData.options.paypal_value_currency}} {{ parseFloat(fieldData.options.paypal_value).toFixed(2) }}</span>
+        </div>
+        <span class="pwfv-paypalrequired" v-if="fieldData.required">Payment must be received before proceeding.</span>
+        <div id="pwfv-paypalparent" v-if="!refreshPayPalDiv"></div>
+    </div>
+
+    <div class="pwfv-paypalcont pwfv-paypalsuccess" v-if="fieldData != null && !['',null].includes(props.paid)">
+        <div class="pwfv-paypalcontheader">
+            <label class="pwfv-fieldlabel">
+                <h2> 
+                    <small>Payment For:</small>
+                    {{ fieldData.options.paypal_value_basis == 'fixed' ? fieldData.label : props.service }}
+                </h2>
+            </label>
+            <span>{{fieldData.options.paypal_value_currency }} {{ parseFloat(fieldData.options.paypal_value).toFixed(2) }}</span>
+        </div>
+        Thank you! Your payment is being processed.
+    </div>
+
+</template>
+
+<style>
+
+</style>

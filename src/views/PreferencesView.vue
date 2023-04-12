@@ -92,8 +92,9 @@ function saveWorker(value,id){
 
 function deleteItem(endpoint,id){
   if(!confirm('Are you sure you want to delete this item?')) return;
+  console.log(endpoint+'/delete?id='+id)
   axios.post(endpoint+'/delete?id='+id,null).then(res=>{
-      if(!res.data.success) return;
+    if(!res.data.success) return;
       router.go('/preferences')
   });
 }
@@ -164,7 +165,7 @@ function saveService(value,price='',id=''){
           <li class="grid border m-1 py-1 px-2 rounded-[4px] border-gray-400" style="grid-template-columns: 1fr 30px 30px;" v-for="w,i in workers" :key="i">
             <p>{{ w.book_worker_name }}</p>
             <button class="hover:scale-105 active:scale-95 transition" @click="openModal('Edit Worker', 'Enter Worker Name','worker',w.book_worker_id);input=w.book_worker_name;"><i v-html="icons.pencil"></i></button>
-            <button class="hover:scale-105 active:scale-95 transition"><i v-html="icons.trash" @click="deleteItem('worker',i.book_worker_id)"></i></button>
+            <button class="hover:scale-105 active:scale-95 transition"><i v-html="icons.trash" @click="deleteItem('worker',w.book_worker_id)"></i></button>
           </li>
         </ul>
       </div>

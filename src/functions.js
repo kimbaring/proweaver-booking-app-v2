@@ -268,15 +268,14 @@ class PaypalIntegration{
 
     mountOn(selector, value, currency_code="USD", description=''){
         return new Promise(async (res,rej)=>{
+            if(value == null){res();return;}
+            value = parseFloat(value)
             await elementLoad(selector)
-            
-
+        
             if(document.querySelector(selector).innerHTML != '' ){
                 res();    
                 return;
             }
-
-
             const proceedTransaction = ()=> {
                 window.paypal.Buttons({
                     createOrder: (data, actions) => {

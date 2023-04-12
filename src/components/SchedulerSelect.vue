@@ -2,7 +2,7 @@
 import {axios, dateFormat} from '../functions'
 
 export default{
-    emits:['onResult'],
+    emits:['onResult','onFetch'],
     props:{
         schedule: {
             type: String
@@ -25,6 +25,9 @@ export default{
         }
     },
     watch:{
+        fetching(){
+            this.$emit('onFetch',this.fetching)
+        },
         async schedule(){
             if(['',null].includes(this.schedule)) return;
             this.fetching = true;
