@@ -28,6 +28,8 @@ export const fieldDefault = {
     }
 }
 
+//Acr8x9sWvKkPBzfz5wqmwPcP3yGiq6qGoTn63WhUmbogdEtWG5-H-Cu0VH7WjGXoEuOuRFdHoBRQC61x
+
 export const pageDefault = {
     "page_title" : "New Page",
     "page_columns" : 1,
@@ -66,176 +68,90 @@ export const pageDefault = {
 };
 
 export const formData = {
-    "form_title":"New Form",
-    "declare":{
-        paypalClientID:'Acr8x9sWvKkPBzfz5wqmwPcP3yGiq6qGoTn63WhUmbogdEtWG5-H-Cu0VH7WjGXoEuOuRFdHoBRQC61x'
-    },
-    "design":{
-        primaryColor: '#446523',
-        pagenavDesign: 'row',
-        css:null
-    },
+    "form_title": "Default Form",
+    "declare": { "paypalClientID": "", "paypalCurrency": "USD","notifEmails":[]},
+    "conditionals": [],
+    "design": { "primaryColor": "#446523", "pagenavDesign": "row", "css": null },
     "pages": [
         {
-            "page_title" : "Schedule Selection",
-            "page_columns" : 1,
-            "page_fields" : [
-                {
-                    "content_type" : "text",
-                    "text": "Sample Header",
-                    "column": 2,
-                    "styles": "background-color:#eee;text-align:center;padding:5px;margin-bottom:10px;font-weight:700"
-                },
-                {
-                    "content_type" : "rbfield",
-                    "column": 2,
-                    endpoint:'services/fetch',
-                    based : 'book_services_name',
-                    type : 'radio',
-                    value : '',
-                    text:'Select Service'
-                },
-                {
-                    "content_type" : "rbfield",
-                    "column": 2,
-                    endpoint:'location/fetch',
-                    based : 'book_location_name',
-                    type : 'radio',
-                    value : '',
-                    text:'Select Location'
-                },
-                {
-                    "content_type" : "rbfield",
-                    "column": 2,
-                    endpoint:'worker/fetch',
-                    based : 'book_worker_name',
-                    type : 'radio',
-                    value : '',
-                    text:'Select Worker'
-                },
-                {
-                    "content_type" : "scheduler",
-                    "column": 1,
-                    text:"Scheduler",
-                    label:""
-                },
-                {
-                    "content_type" : "text",
-                    "text": "This is a sample text inside the form.",
-                    "column": 2,
-                    "grid": '1fr 1fr',
-                    "styles": "text-align:center"
-                },
-                {
-                    "content_type" : "field",
-                    "type": "text",
-                    "name": "sample_field",
-                    "label": "Sample Field",
-                    "value": "",
-                    "column": 2,
-                    "grid": '1fr 1fr',
-                    "readonly": false,
-                    "required": true,
-                    "placeholder": "This is a placeholder",
-                    "values": [{label:'1',value:1},{label:'1',value:2}],
-                    "select": [],
-                    "options": {maximum_checks: null},
-                    "index": "",
-                    "styles": {}
-                },
+            "page_title": "Schedule Selection",
+            "page_columns": 2,
+            "page_fields": [
+                { "content_type": "rbfield","id":"default_location", "column": 2, "endpoint": "location/fetch", "based": "book_location_name", "type": "radio", "value": "", "text": "Select Location" },
+                { "content_type": "rbfield","id":"default_worker", "column": 2, "endpoint": "worker/fetch", "based": "book_worker_name", "type": "radio", "value": "", "text": "Select Worker" },
+                { "content_type": "rbfield","id":"default_services", "column": 2, "endpoint": "services/fetch", "based": "book_services_name", "type": "radio", "value": "", "text": "Select Service" },
+                { "content_type": "scheduler", "id":"default_scheduler", "column": 1, "text": "Scheduler", "label": "" }
             ]
         },
         {
-            "page_title" : "Message",
-            "page_columns" : 1,
-            "page_fields" : [
+            "page_title": "Personal Information",
+            "page_columns": 1,
+            "page_fields": [
                 {
-                    "content_type" : "text",
-                    "text": "Hello, and good morning to you!",
-                    "column": 1,
-                    "styles": "text-align:center"
-                },
-                {
-                    "content_type" : "text",
-                    "text": "Hi, good morning to you too!",
-                    "column": 2,
-                    "grid": '1fr 1fr',
-                    "styles": "text-align:center"
-                },
-            ]
-        },
-         {
-            "page_title" : "Personal Details",
-            "page_columns" : 1,
-            "page_fields" : [
-                {
-                    "content_type" : "text",
-                    "text": "Sample Header",
-                    "column": 1,
-                    "styles": "background-color:#eee;text-align:center;padding:5px;margin-bottom:10px;font-weight:700"
-                },
-                {
-                    "content_type" : "text",
-                    "text": "The quick, brown fox jumps over a lazy dog. DJs flock by when MTV ax quiz prog. Junk MTV quiz graced by fox whelps. Bawds jog, flick quartz, vex nymphs. Waltz, bad nymph, for quick jigs vex! Fox nymphs grab quick-jived waltz. Brick quiz whangs jumpy veldt fox. ",
-                    "column": 2,
-                    "grid": '1fr 1fr',
-                    "styles": "text-align:center"
-                },
-                {
-                    "content_type" : "field",
+                    "content_type": "field",
+                    "id":"default_name",
                     "type": "text",
                     "name": "name",
                     "label": "Name",
                     "value": "",
                     "column": 2,
-                    "grid": '1fr 1fr',
+                    "grid": "1fr 1fr",
                     "readonly": false,
                     "required": true,
                     "placeholder": "Enter your name here",
-                    "values": [{label:'1',value:1},{label:'1',value:2}],
+                    "values": [
+                        { "label": "1", "value": 1 },
+                        { "label": "1", "value": 2 }
+                    ],
                     "select": [],
-                    "options": {maximum_checks: null},
+                    "options": { "maximum_checks": null },
                     "index": "",
                     "styles": {}
                 },
                 {
-                    "content_type" : "field",
+                    "content_type": "field",
+                    "id":"default_gender",
                     "type": "radio-group",
                     "name": "gender",
                     "label": "Gender",
                     "value": "",
                     "column": 2,
-                    "grid": '1fr 1fr',
+                    "grid": "1fr 1fr",
                     "readonly": false,
                     "required": true,
                     "placeholder": "",
-                    "values": [{label:'Male',value:1},{label:'Female',value:2}],
+                    "values": [
+                        { "label": "Male", "value": 1 },
+                        { "label": "Female", "value": 2 }
+                    ],
                     "select": [],
-                    "options": {maximum_checks: null},
+                    "options": { "maximum_checks": null },
                     "index": "",
                     "styles": {}
                 },
                 {
-                    "content_type" : "field",
-                    "type": "checkbox-group",
-                    "name": "availiability",
-                    "label": "Availiability",
+                    "content_type": "field",
+                    "id":"default_email",
+                    "type": "email",
+                    "name": "Email_Address",
+                    "label": "Email Address",
                     "value": "",
                     "column": 2,
-                    "grid": '1fr 1fr',
+                    "grid": "1fr 1fr",
                     "readonly": false,
                     "required": true,
-                    "placeholder": "",
-                    "values": [{label:'Weekdays',value:0},{label:'Weekends',value:1}],
+                    "placeholder": "Enter your email",
+                    "values": [{ "label": "Sample Label", "value": "Sample Value" }],
                     "select": [],
-                    "options": {maximum_checks: 2},
+                    "options": { "paypal_value_currency": "USD", "paypal_value_basis": "fixed", "paypal_value": 1 },
                     "index": "",
                     "styles": {}
-                },
+                }
             ]
         }
     ]
 }
+
 
 
 function fgColor(color) {

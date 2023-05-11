@@ -2,7 +2,7 @@
 import {axios, dateFormat} from '../functions'
 
 export default{
-    emits:['onResult','onFetch'],
+    emits:['onResult','onFetch','selectedService'],
     props:{
         schedule: {
             type: String
@@ -22,6 +22,7 @@ export default{
             availableSchedules:[],
             fetching:false,
             chosenSchedule:null,
+            scheduleSelection: false
         }
     },
     watch:{
@@ -33,8 +34,9 @@ export default{
             this.fetching = true;
             this.chosenSchedule = this.schedule
             let requestString = 'schedules/fetchAvailable?book_schedule_id='+this.schedule;
-            if(this.service != '' && this.service != null) requestString+='&book_schedule_service='+this.service    
+            if(this.service != '' && this.service != null) requestString+='&book_schedule_service='+this.service
             let res = await axios.post(requestString,'default')
+            this.scheduleSelection = false;
             if(res.data == null || !res.data.success) return;
             let date = new Date(res.data.result[0].book_schedule_date);
             this.cc.y = date.getFullYear();
@@ -43,10 +45,13 @@ export default{
             this.qd.y = date.getFullYear();
             this.qd.m = date.getMonth();
             this.qd.d = date.getDate();
-            this.buildCalendar();
             this.fetching = false;
+            this.fetchScheds().then(()=>{
+                this.buildCalendar();
+            });
         },
         service(){
+            if(this.scheduleSelection) return;
             this.fetchScheds();
         }
     },
@@ -98,7 +103,9 @@ export default{
             }
 
             this.chosenSchedule = sched.book_schedule_id
+            this.scheduleSelection = true;
             this.$emit('onResult',this.chosenSchedule)
+            this.$emit('selectedService',sched.book_schedule_service)
         },
         async fetchScheds(){
             if(this.fetching) return;

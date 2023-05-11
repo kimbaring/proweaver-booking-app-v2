@@ -188,7 +188,7 @@ export default{
     computed:{
         filterOutNonExistingServices(){
             if(this.serviceOpts.findIndex(el=>el.value==this.queSchedule.service) >= 0 || this.queSchedule.id == '') return this.serviceOpts;
-            this.alert('Removed Service Warning', 'You already removed the service that is binded with this schedule. If you change it, you cannot select the removed service again.','warning',[],5000)
+            this.alert('Removed Service Warning', 'You already removed the service that is binded with this schedule. If you change it, you cannot select the removed service again. (This schedule will not be seen from the form scheduler)','warning',[],5000)
             return [...this.serviceOpts,{
                 label: this.queSchedule.service,
                 value: this.queSchedule.service
@@ -306,7 +306,7 @@ export default{
                 this.errormsg = '<strong>Repeat Days</strong> field should have at least one check';
                 return;
             }
-
+            
             if(this.queSchedule.id == '' && new Date(this.queSchedule.shift_date_end).getTime() < new Date(this.queSchedule.shift_date).getTime()){
                 this.errormsg = '<strong>End Date</strong> must be set later than the Start Date';
                 return;

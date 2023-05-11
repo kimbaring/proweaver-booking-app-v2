@@ -1,6 +1,6 @@
 <template>
     <div class="pwbcf-custom-field">
-        <input :readonly="readonly" :placeholder="placeholder" :type="(type == 'number' || type== 'integer') ? 'text' : type  ?? 'text'" :class="'pwbcf-'+name" v-if="!groupTypes.includes(type) &&  type != 'textarea' && type != 'paypal'" :value="valueC" @blur="valueC = $event.target.value;validate(valueC)" :name="name">
+        <input :readonly="readonly" :placeholder="placeholder" :type="(type == 'number' || type== 'integer') ? 'text' : type  ?? 'text'" :class="'pwbcf-'+name" v-if="!groupTypes.includes(type) &&  type != 'textarea' && type != 'paypal'" :value="valueC" @blur="valueC = $event.target.value;validate(valueC)" :name="name" @change="e=>{if(type=='checkbox') valueC = e.target.checked}" :checked="valueC">
         <textarea :value="valueC" :placeholder="placeholder" :class="'pwbcf-'+type" v-if="type=='textarea'" @blur="valueC = $event.target.value"></textarea>
         
         <div class="pwbcf-checkbox-group" :style="{'grid-template-columns':columns}" v-if="type == 'checkbox-group'">

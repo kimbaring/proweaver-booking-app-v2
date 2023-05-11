@@ -1,5 +1,7 @@
 <script setup>
 import {basicSetup, EditorView} from "codemirror"
+import { keymap } from "@codemirror/view";
+import {indentWithTab} from "@codemirror/commands"
 import {css} from "@codemirror/lang-css"
 import { onMounted, watch,defineEmits } from "vue";
 
@@ -34,13 +36,16 @@ function reloadCSSEditor(cursor, scrollAmt){
 }
 
 onMounted(()=>{
+    document.getElementById('code-mirror-parent').onkey
     editorView = new EditorView({
         doc: props.css,
         extensions: [basicSetup, css(),
             EditorView.updateListener.of(function(e) {
                 emit('change',e.state.doc.toString());
-            })
-
+            }),
+            keymap.of([
+                indentWithTab
+            ]),
         ],
         parent: document.getElementById('code-mirror-parent')
     })

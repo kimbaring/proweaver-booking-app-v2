@@ -14,6 +14,35 @@ let props = defineProps({
     page:{default:0,type:Number}
 })
 
+let siteKey = ref('');
+
+function baseurl(url){
+    if(window.location.hostname == '127.0.0.1') return `${window.location.protocol}//${window.location.hostname}:${window.location.port}/pw-bookingapp/admin/`;
+    else return `${window.location.protocol}//${window.location.hostname}/pw-bookingapp/admin/`;
+}
+
+axios.get(baseurl()+'/constants.json').then(res=>{
+    siteKey.value = res.data.recaptcha_sitekey
+    let gRecaptchaOnExists =  setInterval(()=>{
+        if(document.querySelector('.g-recaptcha') == null) return;
+
+        try{
+            clearInterval(gRecaptchaOnExists);
+            grecaptcha.render("recaptcha", {
+                sitekey: siteKey.value,
+                callback: function() {}
+            });
+            
+            window.parent.document.getElementById('pwform').style.height=document.body.offsetHeight+'px' 
+        }catch(err){}
+        
+        if(form.value.declare.paypalClientID != '' && form.value.declare.paypalClientID != null)
+            Paypal.init(form.value.declare.paypalClientID,form.value.declare.paypalCurrency,()=>{paypalLoaded.value = true})
+
+
+    },100)
+})
+
 let form = ref(null)
 let currentPageIndex = ref(0)
 let progressIndex = ref(0);
@@ -29,6 +58,10 @@ let formSubmitted = ref(false);
 let paypalLoaded = ref(false)  
 let refreshPayPal = ref(false)
 let currentPageFieldIds = ref([]);
+let selectedScheduleService = ref('');
+let formId = -1;
+let userReceiver = ''
+
 const currentPage = computed(()=>{
     pageColumnResponsive.value = form.value.pages[currentPageIndex.value].page_columns;
     return form.value.pages[currentPageIndex.value]
@@ -53,16 +86,64 @@ function setCurrentPageRequired(){
             else if(el.content_type=='field') currentPageRequiredLabels.value.push(el.label);
         }
 
+        // if(['',null,undefined].includes(el.lid)){
+        //     if(el.content_type=='rbfield') currentPage.value.page_fields[i].lid = `pwlid=${(Math.floor(Math.random() * 10000000) + 1).toString(32)}_pwid=${el.endpoint.split('/')[0]}`
+        //     else if(el.content_type=='scheduler') currentPage.value.page_fields[i].lid = `pwlid=${(Math.floor(Math.random() * 10000000) + 1).toString(32)}_pwid=scheduler`
+        //     else if(el.content_type=='field') currentPage.value.page_fields[i].lid = `pwlid=${(Math.floor(Math.random() * 10000000) + 1).toString(32)}_${el.name}`
+        // }
+
         if(el.content_type=='rbfield') currentPageFieldIds.value.push(`pwp${currentPageIndex.value}_pwo${i}_pwid=${el.endpoint.split('/')[0]}`)
         else if(el.content_type=='scheduler') currentPageFieldIds.value.push(`pwp${currentPageIndex.value}_pwo${i}_pwid=scheduler`)
         else if(el.content_type=='field') currentPageFieldIds.value.push(`pwp${currentPageIndex.value}_pwo${i}_${el.name}`)
-        
-        if(el.content_type=='rbfield') requiredFields.value.push({id:`pwp${currentPageIndex.value}_pwo${i}_pwid=${el.endpoint.split('/')[0]}`,label:el.text})
-        else if(el.content_type=='scheduler') requiredFields.value.push({id:`pwp${currentPageIndex.value}_pwo${i}_pwid=scheduler`,label:el.label})
-        else if(el.content_type=='field') requiredFields.value.push({id:`pwp${currentPageIndex.value}_pwo${i}_${el.name}`,label:el.label})
+
+        if(el.content_type=='rbfield') 
+            if(requiredFields.value.findIndex(el2=>el2.id == `pwp${currentPageIndex.value}_pwo${i}_pwid=${el.endpoint.split('/')[0]}`) == -1)
+                requiredFields.value.push({id:`pwp${currentPageIndex.value}_pwo${i}_pwid=${el.endpoint.split('/')[0]}`,label:el.text})
+        if(el.content_type=='scheduler') 
+            if(requiredFields.value.findIndex(el2=>el2.id == `pwp${currentPageIndex.value}_pwo${i}_pwid=scheduler`) == -1) 
+                requiredFields.value.push({id:`pwp${currentPageIndex.value}_pwo${i}_pwid=scheduler`,label:el.text})
+        if(el.content_type=='field')
+            if(requiredFields.value.findIndex(el2=>el2.id == `pwp${currentPageIndex.value}_pwo${i}_${el.name}`) == -1)
+                requiredFields.value.push({id:`pwp${currentPageIndex.value}_pwo${i}_${el.name}`,label:el.label})
     });
 }
 
+function selectedService(e){
+    selectedScheduleService.value = e
+    let order = -1;
+
+    form.value.pages.forEach((el2,i2)=>{
+        el2.page_fields.forEach((el,i)=>{
+            if(el.content_type == 'rbfield' && el.endpoint.split('/')[0] == 'services'){
+                let index = userInput.value.findIndex(el=>el.id == `pwp${i2}_pwo${i}_pwid=services`)
+                if(index == -1){
+                    userInput.value.push({
+                        id:`pwp${i2}_pwo${i}_pwid=services`,
+                        label: el.text,
+                        value: selectedScheduleService.value
+                    })
+                }else{
+                    userInput.value[index] = {
+                        id:`pwp${i2}_pwo${i}_pwid=services`,
+                        label: el.text,
+                        value: selectedScheduleService.value
+                    }
+                }
+
+                if(currentPageIndex.value == i2) order = i
+            }
+        })
+    })
+
+    if(order == -1) return;
+    let temp = JSON.parse(JSON.stringify(currentPage.value.page_fields[order]));
+    currentPage.value.page_fields[order] = {
+        column: 1
+    };
+    setTimeout(() => {
+        currentPage.value.page_fields[order] = temp
+    }, 10);
+}
 
 function checkGetter(){
     let getparams = new URLSearchParams(window.location.search);
@@ -77,10 +158,11 @@ function checkGetter(){
         setCurrentPageRequired()
         window.onresize = ()=>checkResponsive()
         checkResponsive()
-
+        removeUnlistedEmails()
         return;
     }
     let id = getparams.get('form_id');
+    formId = id;
     axios.post('forms/fetch?book_form_id='+id).then(res=>{
         if(res.data == null || !res.data.success) return;
         form.value = JSON.parse(res.data.result[0].book_form_json)
@@ -92,7 +174,24 @@ function checkGetter(){
         setCurrentPageRequired()
         window.onresize = ()=>checkResponsive()
         checkResponsive()
+        removeUnlistedEmails()
     });
+}
+function removeUnlistedEmails(){
+    if(form.value.declare.notifEmails == null || form.value.declare.notifEmails.length == 0) return;
+    axios.post('notification/fetch').then(res=>{
+        let result = [];
+        if(res.data.result != null) result = res.data.result;
+        let indexesToRemove = [];
+        form.value.declare.notifEmails.forEach((el,i)=>{
+            let index = result.findIndex(el2=>el2.book_email_address == el)
+            if(index == -1) indexesToRemove.push(i)
+        })
+        
+        indexesToRemove.forEach(el=>{
+            form.value.declare.notifEmails.splice(el,1)
+        })
+    })
 }
 
 
@@ -118,17 +217,17 @@ function deleteRBField(id){
 
 function deletePaypalAsPayment(f){
     let index = currentPageRequired.value.findIndex(el=>el.includes(f.name))
-    let deletedId = currentPageRequired.value[index];
     requiredFields.value.splice(requiredFields.value.findIndex(el=>el.id.includes(f.name)), 1)
     currentPageRequired.value.splice(index,1);
     currentPageRequiredLabels.value.splice(index,1);
 }
 
 function addPaypalAsPayment(f){
-        let i = currentPage.value.page_fields.findIndex(el=> el.name == f.name)
-        requiredFields.value.push({id:`pwp${currentPageIndex.value}_pwo${i}_${f.name}`,label:f.label})
-        currentPageRequired.value.push(`pwp${currentPageIndex.value}_pwo${i}_${f.name}`)
-        currentPageRequiredLabels.value.push(f.label);
+    let i = currentPage.value.page_fields.findIndex(el=> el.name == f.name)
+    if(requiredFields.value.findIndex(el=>el.id==`pwp${currentPageIndex.value}_pwo${i}_${f.name}`)) return;
+    requiredFields.value.push({id:`pwp${currentPageIndex.value}_pwo${i}_${f.name}`,label:f.label})
+    currentPageRequired.value.push(`pwp${currentPageIndex.value}_pwo${i}_${f.name}`)
+    currentPageRequiredLabels.value.push(f.label);
 }
 
 function getFieldValue(id){
@@ -137,9 +236,15 @@ function getFieldValue(id){
     return userInput.value[index].value
 }
 
-function organizeInput(id,fieldLabel,fieldValue){
+function organizeInput(id,fieldLabel,fieldValue,f){
     let fieldId = currentPageFieldIds.value[currentPageFieldIds.value.findIndex(el=>el.includes(id))];
     let index = userInput.value.findIndex(el=>el.id.includes(fieldId));
+
+    if(f.content_type == 'field' && f.type == 'email' && (f.useemail === 'true' || f.useemail === true) && !['',null].includes(fieldValue)){
+        userReceiver = fieldValue;
+
+        console.log(userReceiver)
+    }
 
     
     if(index == -1){
@@ -162,27 +267,6 @@ function organizeInput(id,fieldLabel,fieldValue){
 onMounted(()=>{
     checkGetter()
     if(props.page != 0) currentPageIndex.value = props.page;
-    let gRecaptchaOnExists =  setInterval(()=>{
-        if(document.querySelector('.g-recaptcha') == null) return;
-
-        try{
-            clearInterval(gRecaptchaOnExists);
-
-            grecaptcha.render("recaptcha", {
-                sitekey: '6LcHeGAkAAAAAJJ--spGuBQszxHROuBbMBsJrRBB',
-                callback: function() {
-                    console.log('recaptcha callback');
-                }
-            });
-            
-            window.parent.document.getElementById('pwform').style.height=document.body.offsetHeight+'px' 
-        }catch(err){}
-        
-        if(form.value.declare.paypalClientID)
-            Paypal.init(form.value.declare.paypalClientID,()=>{paypalLoaded.value = true})
-
-
-    },100)
     return;
 })
 
@@ -224,6 +308,7 @@ function beforePageChange(add,jumpTo=null){
 
 function submit(){
     currentPageRequiredInvalids.value = [];
+
     requiredFields.value.forEach(el=>{
         let index = userInput.value.findIndex(el2=>{
             if(el2.id == el.id && el2.value != null && typeof el2.value == 'object') return el2.value.length > 0;
@@ -244,17 +329,19 @@ function submit(){
     let worker = userInput.value[workerIndex] ?? '';
     let services = userInput.value[servicesIndex] ?? '';
     let schedule = userInput.value[scheduleIndex] ?? '';
-
+    
     if(grecaptcha.getResponse().length == 0){
         alert('Please complete the reCAPTCHA!')
         return;
     }
-
+    
     axios.post('appointments/create',null,{
+        form_receivers: JSON.stringify(form.value.declare.notifEmails),
         book_appointment_locationname:location.value ?? '',
         book_appointment_servicesname:services.value ?? '',
         book_appointment_worker:worker.value ?? '',
         book_appointment_scheduleid:schedule.value ?? '',
+        book_appointment_email : userReceiver,
         book_appointment_custominputs: JSON.stringify(userInput.value)
     }).then(res=>{
         if(res.data == null || !res.data.success){
@@ -270,7 +357,6 @@ function submit(){
 
 async function checkResponsive(){
     pageColumnResponsive.value = currentPage.value.page_columns
-
     const responsiveClasser = ()=>{
         document.getElementById('pwfv-parent').dataset.responsive=""
         if(document.getElementById('pwfv-parent').offsetWidth <= 400)
@@ -291,7 +377,6 @@ async function checkResponsive(){
 
         if(window.parent.document.getElementById('pwform') != null){
             new ResizeObserver(()=>{
-                console.log('test');
                 window.parent.document.getElementById('pwform').style.width='100%' 
                 window.parent.document.getElementById('pwform').style.overflow='hidden' 
                 window.parent.document.getElementById('pwform').style.border='none' 
@@ -348,7 +433,7 @@ function fetchingSchedules(e){
                                 :type="f.type"
                                 :value="getFieldValue('pwid='+f.endpoint.split('/')[0])"
                                 :readonly="f.readonly"
-                                @onResult="e=>organizeInput('pwid='+f.endpoint.split('/')[0],f.text,e)"
+                                @onResult="e=>organizeInput('pwid='+f.endpoint.split('/')[0],f.text,e,f)"
                                 @onEmpty="deleteRBField('pwid='+f.endpoint.split('/')[0])"
                             />
                         </div>
@@ -359,7 +444,8 @@ function fetchingSchedules(e){
                                 :schedule="getFieldValue('pwid=scheduler')"
                                 :service="getFieldValue('pwid=services')"
                                 @onFetch="e=>fetchingSchedules(e)"
-                                @onResult="e=>organizeInput('pwid=scheduler',f.text,e)"
+                                @selectedService="e=>selectedService(e)"
+                                @onResult="e=>organizeInput('pwid=scheduler',f.text,e,f)"
                             />
                         </div>
                         <div v-if="f.content_type == 'text'" v-html="f.text" :style="f.styles"></div>
@@ -377,7 +463,7 @@ function fetchingSchedules(e){
                             :options="f.options"
                             :index="f.index"
                             :value="getFieldValue(f.name)"
-                            @onResult="e=>organizeInput(f.name,f.label,e)"
+                            @onResult="e=>organizeInput(f.name,f.label,e,f)"
                             />
                         </div>
                         <div v-if="f.content_type == 'field' && f.type == 'checkbox'">
@@ -393,7 +479,7 @@ function fetchingSchedules(e){
                             :options="f.options"
                             :index="f.index"
                             :value="getFieldValue(f.name)"
-                            @onResult="e=>organizeInput(f.name,f.label,e)"
+                            @onResult="e=>organizeInput(f.name,f.label,e,f)"
                             />
                             <label :for="f.name" class="pwfvf-checkbox-label">{{ f.label }} <span v-if="f.required">*</span></label>
                         </div>
@@ -402,7 +488,8 @@ function fetchingSchedules(e){
                                 :service="getFieldValue('pwid=services')"
                                 :fieldData="JSON.parse(JSON.stringify(f))"
                                 :paid="getFieldValue(f.name)"
-                                @onPayment="e=>organizeInput(f.name,f.label,e)"
+                                :currency="form.declare.paypalCurrency"
+                                @onPayment="e=>organizeInput(f.name,f.label,e,f)"
                                 @onEmpty="()=>deletePaypalAsPayment(f)"
                                 @onLoaded="()=>addPaypalAsPayment(f)"
                             />
@@ -422,7 +509,7 @@ function fetchingSchedules(e){
                                 :type="f.type"
                                 :value="getFieldValue('pwid='+f.endpoint.split('/')[0])"
                                 :readonly="f.readonly"
-                                @onResult="e=>organizeInput('pwid='+f.endpoint.split('/')[0],f.text,e)"
+                                @onResult="e=>organizeInput('pwid='+f.endpoint.split('/')[0],f.text,e,f)"
                                 @onEmpty="deleteRBField('pwid='+f.endpoint.split('/')[0])"
                             />
                         </div>
@@ -433,7 +520,8 @@ function fetchingSchedules(e){
                                 :schedule="getFieldValue('pwid=scheduler')"
                                 :service="getFieldValue('pwid=services')"
                                 @onFetch="e=>fetchingSchedules(e)"
-                                @onResult="e=>organizeInput('pwid=scheduler',f.text,e)"
+                                @selectedService="e=>selectedService(e)"
+                                @onResult="e=>organizeInput('pwid=scheduler',f.text,e,f)"
                             />
                         </div>
                         <div v-if="f.content_type == 'text'" v-html="f.text" :style="f.styles"></div>
@@ -451,7 +539,7 @@ function fetchingSchedules(e){
                             :options="f.options"
                             :index="f.index"
                             :value="getFieldValue(f.name)"
-                            @onResult="e=>organizeInput(f.name,f.label,e)"
+                            @onResult="e=>organizeInput(f.name,f.label,e,f)"
                             />
                         </div>
                         <div v-if="f.content_type == 'field' && f.type == 'checkbox'">
@@ -467,7 +555,7 @@ function fetchingSchedules(e){
                             :options="f.options"
                             :index="f.index"
                             :value="getFieldValue(f.name)"
-                            @onResult="e=>organizeInput(f.name,f.label,e)"
+                            @onResult="e=>organizeInput(f.name,f.label,e,f)"
                             />
                             <label :for="f.name" class="pwfvf-checkbox-label">{{ f.label }} <span v-if="f.required">*</span></label>
                         </div>
@@ -476,7 +564,7 @@ function fetchingSchedules(e){
                                 :service="getFieldValue('pwid=services')"
                                 :fieldData="JSON.parse(JSON.stringify(f))"
                                 :paid="getFieldValue(f.name)"
-                                @onPayment="e=>organizeInput(f.name,f.label,e)"
+                                @onPayment="e=>organizeInput(f.name,f.label,e,f)"
                                 @onEmpty="()=>deletePaypalAsPayment(f)"
                                 @onLoaded="()=>addPaypalAsPayment(f)"
                             />
@@ -492,7 +580,7 @@ function fetchingSchedules(e){
                 </div>    
                 <div class="pwfv-finalfields">
                     <div class="pwfv-recaptcha-parent">                        
-                        <div id="recaptcha" v-show="currentPageIndex == form.pages.length -1" class="g-recaptcha" data-sitekey="6LcHeGAkAAAAAJJ--spGuBQszxHROuBbMBsJrRBB"></div>
+                        <div id="recaptcha" v-show="currentPageIndex == form.pages.length -1" class="g-recaptcha" :data-sitekey="siteKey"></div>
                     </div>
                     <button @click="beforePageChange(-1)" v-if="currentPageIndex != 0"><i v-html="icons.arrowLeft"></i> Prev</button>
                     <button @click="beforePageChange(1)" v-if="currentPageIndex != form.pages.length -1">Next <i v-html="icons.arrowRight"></i></button>
@@ -507,7 +595,7 @@ function fetchingSchedules(e){
             </div>
             
         </div>
-   </div>
+    </div>
 </template>
 <style scoped>
 

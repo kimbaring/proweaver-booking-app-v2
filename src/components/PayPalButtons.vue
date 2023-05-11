@@ -5,6 +5,7 @@ import { Paypal, axios } from '../functions';
 let props = defineProps({
     service: {default:'',type:String},
     paid: {default:'',type:String},
+    currency: {default:'USD',type:String},
     fieldData: {type:Object}
 });
 
@@ -40,7 +41,7 @@ function refreshPayPal(){
         refreshPayPalDiv.value = false;
         let payValue = fieldData.value.options.paypal_value
         
-        Paypal.mountOn('#pwfv-paypalparent',payValue,fieldData.value.options.paypal_value_currency).then(res=>{
+        Paypal.mountOn('#pwfv-paypalparent',payValue,props.currency).then(res=>{
             emit('onPayment',JSON.parse(JSON.stringify(payValue)))
         })
     },10)
@@ -63,7 +64,7 @@ onMounted(()=>{
                     {{ fieldData.options.paypal_value_basis == 'fixed' ? fieldData.label : props.service }}
                 </h2>
             </label>
-            <span>{{fieldData.options.paypal_value_currency}} {{ parseFloat(fieldData.options.paypal_value).toFixed(2) }}</span>
+            <span>{{ props.currency}} {{ parseFloat(fieldData.options.paypal_value).toFixed(2) }}</span>
         </div>
         <span class="pwfv-paypalrequired" v-if="fieldData.required">Payment must be received before proceeding.</span>
         <div id="pwfv-paypalparent" v-if="!refreshPayPalDiv"></div>
@@ -77,7 +78,7 @@ onMounted(()=>{
                     {{ fieldData.options.paypal_value_basis == 'fixed' ? fieldData.label : props.service }}
                 </h2>
             </label>
-            <span>{{fieldData.options.paypal_value_currency }} {{ parseFloat(fieldData.options.paypal_value).toFixed(2) }}</span>
+            <span>{{ props.currency }} {{ parseFloat(fieldData.options.paypal_value).toFixed(2) }}</span>
         </div>
         Thank you! Your payment is being processed.
     </div>

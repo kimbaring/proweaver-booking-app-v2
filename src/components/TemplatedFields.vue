@@ -1,8 +1,8 @@
 <template>
     
     <div class="pwfvf-custom-field" :class="{'pwfvf-checkbox-input':type == 'checkbox'}">
-        <input :readonly="readonly" :placeholder="placeholder" :type="(type == 'number' || type== 'integer') ? 'text' : type  ?? 'text'" :class="'pwfvf-'+name" v-if="!groupTypes.includes(type) &&  type != 'textarea' && type != 'paypal' && type != 'checkbox'" :value="valueC" @blur="valueC = $event.target.value;validate(valueC)" :name="name">
-        <textarea :value="valueC" :placeholder="placeholder" :class="'pwfvf-'+type" v-if="type=='textarea'" @blur="valueC = $event.target.value"></textarea>
+        <input :readonly="readonly" :placeholder="placeholder" :type="(type == 'number' || type== 'integer') ? 'text' : type  ?? 'text'" :class="'pwfvf-'+name" v-if="!groupTypes.includes(type) &&  type != 'textarea' && type != 'paypal' && type != 'checkbox'" :value="valueC" @blur="valueC = $event.target.value;validate(valueC)" :name="name" @change="e=>{if(type=='checkbox') valueC = e.target.checked}">
+        <textarea :value="valueC" :placeholder="placeholder" :class="'pwfvf-'+type" v-if="type=='textarea'" @blur="valueC = $event.target.value" :checked="valueC"></textarea>
 
         <label v-if="type == 'checkbox'" class="pwfvf-checkbox-main" :class="{active: valueC == true}" >
             <input :id="name" type="checkbox" hidden :checked="valueC == true" @change="$event=>valueC = $event.target.checked">

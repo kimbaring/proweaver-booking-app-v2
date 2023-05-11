@@ -10,13 +10,18 @@ export function dateFormat(format='',dateString=''){
     let d = date.toLocaleString('en-US',{day:'numeric'});
     let D = date.toLocaleString('en-US',{day:'2-digit'});
     let y = date.toLocaleString('en-US',{year:'numeric'});
-    let h = date.toLocaleTimeString('en-US',{hour12:true,hour:'numeric'}).replace(/( AM)|( PM)/g,'');
-    let H = date.toLocaleTimeString('en-US',{hour12:false,hour:'numeric'});
-    let m = date.toLocaleTimeString('en-US',{minute:'numeric'});
-    let M = date.toLocaleTimeString('en-US',{minute:'2-digit'});
-    let s = date.toLocaleTimeString('en-US',{second:'numeric'});
-    let S = date.toLocaleTimeString('en-US',{second:'2-digit'});
-    let a = date.toLocaleTimeString('en-US',{hour12:true,hour:'numeric'}).replace(/[0-9]+ /g,'');
+    let h = date.toLocaleString('en-US',{hour12:true,hour:'numeric'}).replace(/( AM)|( PM)/g,'');
+    let H = date.toLocaleString('en-US',{hour12:false,hour:'2-digit',minimumIntegerDigits: 2});
+    let m = date.toLocaleString('en-US',{minute:'numeric'});
+    let getMinuteAndSeconds = date.toLocaleTimeString('en-US',{hour12:false,hour:  "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+    })
+    let array_getMinuteAndSeconds = getMinuteAndSeconds.split(':')
+    let M = array_getMinuteAndSeconds[1];
+    let s = date.toLocaleString('en-US',{second:'numeric'});
+    let S = array_getMinuteAndSeconds[2];
+    let a = date.toLocaleString('en-US',{hour12:true,hour:'numeric'}).replace(/[0-9]+ /g,'');
 
     format = format.replace(/%m2/g,m2);
     format = format.replace(/%lm/g,lm);

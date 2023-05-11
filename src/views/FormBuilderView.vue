@@ -10,6 +10,7 @@ import {axios} from '../functions'
 
 
 let form = ref(JSON.parse(JSON.stringify(formData)));
+let emails = ref(form.value.declare.emails ?? []);
 let currentPageIndex = ref(0)
 let formRefresh = ref(false)
 let addFieldMode = ref(false)
@@ -68,6 +69,7 @@ function refreshForm(){
 }
 
 function checkGetter(){
+  
   let getparams = new URLSearchParams(window.location.search);
   if(getparams.get('form_id') == null) return;
   let id = getparams.get('form_id');
@@ -77,6 +79,16 @@ function checkGetter(){
     form.value = JSON.parse(res.data.result[0].book_form_json)
   });
 }
+
+axios.post('notification/fetch').then(res=>{
+    if(res.data == null || !res.data.success) return;
+    emails.value = res.data.result.map(el=>{
+      return {
+        label:el.book_email_address,
+        value:el.book_email_address
+      }
+    })
+});
 
 
 checkGetter()
@@ -134,7 +146,9 @@ function addField(){
     addFieldMode.value = true;
     return;
   }
-  currentPage.value.page_fields.push(JSON.parse(JSON.stringify(fieldDefault[addFieldType.value])))
+
+  let newId = (Date.now()).toString(36)+'-'+Math.random().toString(36)
+  currentPage.value.page_fields.push(JSON.parse(JSON.stringify({...fieldDefault[addFieldType.value],id:newId})))
   addFieldMode.value = false;
 }
 
@@ -144,20 +158,34 @@ function editField(){
 
   if(field.content_type=='field'){
     if(field.label == '') {alert('Some values under options are empty!');return;}
+    if(field.type == 'paypal' && (field.options.paypal_value == '' || field.options.paypal_value == '0')) {alert('Paypal value is empty/invalid!');return;}
     if(field.type=="checkbox-group" && field.options.maximum_checks == null){
       delete field.options.maximum_check;
     }
     field.name = field.label.replaceAll()
     fields.value.forEach(el=>{if(el.name == field.name) field.name+='_';});
+
+    if(field.type == 'email' && field.useemail != null  && ['true',true].includes(field.useemail)){
+        form.value.pages.forEach((el2,i2)=>{
+          el2.page_fields.forEach((el,i)=>{
+            if(el.useemail != null) delete form.value.pages[i2].page_fields[i].useemail;
+          });
+        })
+
+        field.useemail = true;
+    }
+
     if(['checkbox-group','radio-group','select'].includes(field.type)){
       let flag = false;
       field.values.forEach(el=>{
         if(typeof el.label != 'string') el.label = el.label.toString();
         if(typeof el.value != 'string') el.value = el.value.toString();
-        if(el.label == '' || el.value == '') 
+        if(el.label == '') 
+          flag = true;
+
+        if(el.value == '' && field.type != 'select')
           flag = true;
       })
-      console.log(field.values)
       if(flag){alert('Some values under options are empty!');return;}
     }
   }
@@ -217,16 +245,38 @@ function migrateField(){
 
 function saveChanges(){
   if(!confirm('Confirm saving?')) return;
+
+  
+  let createdIds = [];
+  form.value.pages.forEach((el2,i2)=>{
+    el2.page_fields.forEach((el,i)=>{
+      if(el.id == null || el.id == ''){
+        let id = '';
+        for(let j = 0; j < 20; j++){
+          id = (Date.now()).toString(36)+'-'+Math.random().toString(36);
+          if(createdIds.includes(id)){
+            j--;
+            continue;
+          }
+          createdIds.push(id)
+        }
+        form.value.pages[i2].page_fields[i].id = id;
+        console.log(id)
+      }
+    })
+  })
+  
+
   if(editId == null){
     axios.post('forms/create',null,{
       book_form_name:form.value.form_title,
       book_form_json: JSON.stringify(form.value)
-    }).then(()=>router.go(-1))
+    }).then(()=>window.location.reload())
   }else{
     axios.post('forms/update?id='+editId,null,{
       book_form_name:form.value.form_title,
       book_form_json: JSON.stringify(form.value)
-    }).then(()=>router.go(-1))
+    }).then(()=>window.location.reload())
   }
 }
 
@@ -316,46 +366,10 @@ function cancelEdit(){
           :value="queField.options.paypal_value_basis"
           @onResult="e=>{queField.options.paypal_value_basis = e;}"
         />
-        <label for="pwfb-editfield-paypalcurrency" class="mt-2 mb-1 block" v-if="queField.type=='paypal'">Currency</label>
-        <CustomField
-          v-if="queField.type=='paypal'"
-          name="pwfb-editfield-paypalcurrency"
-          type="select"
-          placeholder="Enter field label"
-          columns="1fr 1fr"
-          :values="[
-            // {label:'Australian Dollar (AUD)', value:'AUD'},
-            // {label:'Brazilian Real (BRL)', value:'BRL'},
-            // {label:'Canadian Dollar (CAD)', value:'CAD'},
-            // {label:'Swiss Franc (CHF)', value:'CHF'},
-            // {label:'Czech Koruna (CZK)', value:'CZK'},
-            // {label:'Danish Krone (DKK)', value:'DKK'},
-            // {label:'Euro (EUR)', value:'EUR'},
-            // {label:'British Pound (GBP)', value:'GBP'},
-            // {label:'Hong Kong Dollar (HKD)', value:'HKD'},
-            // {label:'Hungarian Forint (HUF)', value:'HUF'},
-            // {label:'Israeli New Shekel (ILS)', value:'ILS'},
-            // {label:'Japanese Yen (JPY)', value:'JPY'},
-            // {label:'Malaysian Ringgit (MYR)', value:'MYR'},
-            // {label:'Mexican Peso (MXN)', value:'MXN'},
-            // {label:'Norwegian Krone (NOK)', value:'NOK'},
-            // {label:'New Zealand Dollar (NZD)', value:'NZD'},
-            // {label:'Philippine Peso (PHP)', value:'PHP'},
-            // {label:'Polish Zloty (PLN)', value:'PLN'},
-            // {label:'Russian Ruble (RUB)', value:'RUB'},
-            // {label:'Swedish Krona (SEK)', value:'SEK'},
-            // {label:'Singapore Dollar (SGD)', value:'SGD'},
-            // {label:'Thai Baht (THB)', value:'THB'},
-            // {label:'Taiwan New Dollar (TWD)', value:'TWD'},
-            {label:'United States Dollar (USD)', value:'USD'}
-          ]"
-          :value="queField.options.paypal_value_currency"
-          @onResult="e=>{queField.options.paypal_value_currency = e;}"
-        />
-        <label for="pwfb-editfield-label" class="mt-2 mb-1 block" v-if="queField.type=='paypal' && queField.options.paypal_value_basis == 'fixed'">Value</label>
+        <label for="pwfb-editfield-paypalvalue" class="mt-2 mb-1 block" v-if="queField.type=='paypal' && queField.options.paypal_value_basis == 'fixed'">Value</label>
         <CustomField
           v-if="queField.type=='paypal' && queField.options.paypal_value_basis == 'fixed'"
-          name="pwfb-editfield-label"
+          name="pwfb-editfield-paypalvalue"
           type="number"
           placeholder="Enter PayPal Value (e.g. 20.00)"
           columns="1fr 1fr"
@@ -432,6 +446,18 @@ function cancelEdit(){
           ]"
           @onResult="e=>{queField.required = e;}"
         />
+        <div class="flex items-center gap-2" v-if="queField.type == 'email'">
+          <CustomField
+            name="pwfb-editfield-useemail"
+            type="checkbox"
+            placeholder="Tooltip to help your users what to input"
+            columns="1fr 1fr"
+            :value="queField.useemail"
+            @onResult="e=>{queField.useemail = e;}"
+          />
+          <label for="pwfb-editfield-useemail" class="mt-2 mb-1 block">Use this email to notify user about the status of their booking?</label>
+        </div>
+        
         <label for="pwfb-editfield-required" class="mt-3 mb-1 block"
           v-if="['checkbox-group','radio-group','select'].includes(queField.type)"
         >Field Options</label>
@@ -557,6 +583,16 @@ function cancelEdit(){
           :value="form.design.pagenavDesign"
           @onResult="e=>{form.design.pagenavDesign = e;}"
         />
+        <h2 class="mb-2 mt-5 block font-bold text-gray-700 text-lg">Notifications</h2>
+        <p class="mb-2">Check the email addresses where you want to receive a notification about a client's submission:</p>
+        <div class="max-h-[200px] overflow-y-auto">
+          <CustomField
+            type="checkbox-group"
+            :select="form.declare.notifEmails"
+            :values="emails"
+            @onResult="e=>form.declare.notifEmails=e"
+          />
+        </div>
         <h2 for="pwfb-pagecolumns" class="mb-2 mt-5 block font-bold text-gray-700 text-lg">Page Settings</h2>
         <label for="pwfb-pagetitle" class="mb-2 block">Page Title</label>
         <CustomField
@@ -623,13 +659,53 @@ function cancelEdit(){
         </div> -->
         <div class="bg-white p-5 mb-5 text-gray-800" v-if="manageExtensionsMode">
           <h2 class="font-bold text-xl mb-2">Third-Party Credentials</h2>
-            <label for="pwfbtpc-paypal" class="mb-1 block">PayPal Client ID</label>
-            <CustomField
-              name="pwfbtpc-paypal"
-              placeholder="Paste your PayPal Client ID here"
-              :value="form.declare.paypalClientID"
-              @onResult="e=>form.declare.paypalClientID = e"
-            />
+            <div class="grid" style="grid-template-columns: 1fr 370px;">
+              <div>
+                <label for="pwfbtpc-paypal" class="mb-1 block">PayPal Client ID</label>
+                <CustomField
+                  name="pwfbtpc-paypal"
+                  placeholder="Paste your PayPal Client ID here"
+                  :value="form.declare.paypalClientID"
+                  @onResult="e=>form.declare.paypalClientID = e"
+                />
+              </div>
+              <div>
+                <label for="pwfbtpc-paypal" class="mb-1 block">Currency</label>
+                <CustomField
+                  name="pwfbtpc-paypalcurrency"
+                  type="select"
+                  :value="form.declare.paypalCurrency"
+                  @onResult="e=>form.declare.paypalCurrency = e"
+                  :values="[
+                    {label:'Australian Dollar (AUD)', value:'AUD'},
+                    {label:'Brazilian Real (BRL)', value:'BRL'},
+                    {label:'Canadian Dollar (CAD)', value:'CAD'},
+                    {label:'Swiss Franc (CHF)', value:'CHF'},
+                    {label:'Czech Koruna (CZK)', value:'CZK'},
+                    {label:'Danish Krone (DKK)', value:'DKK'},
+                    {label:'Euro (EUR)', value:'EUR'},
+                    {label:'British Pound (GBP)', value:'GBP'},
+                    {label:'Hong Kong Dollar (HKD)', value:'HKD'},
+                    {label:'Hungarian Forint (HUF)', value:'HUF'},
+                    {label:'Israeli New Shekel (ILS)', value:'ILS'},
+                    {label:'Japanese Yen (JPY)', value:'JPY'},
+                    {label:'Malaysian Ringgit (MYR)', value:'MYR'},
+                    {label:'Mexican Peso (MXN)', value:'MXN'},
+                    {label:'Norwegian Krone (NOK)', value:'NOK'},
+                    {label:'New Zealand Dollar (NZD)', value:'NZD'},
+                    {label:'Philippine Peso (PHP)', value:'PHP'},
+                    {label:'Polish Zloty (PLN)', value:'PLN'},
+                    {label:'Russian Ruble (RUB)', value:'RUB'},
+                    {label:'Swedish Krona (SEK)', value:'SEK'},
+                    {label:'Singapore Dollar (SGD)', value:'SGD'},
+                    {label:'Thai Baht (THB)', value:'THB'},
+                    {label:'Taiwan New Dollar (TWD)', value:'TWD'},
+                    {label:'United States Dollar (USD)', value:'USD'}
+                  ]"
+                />
+              </div>
+            </div>
+            
 
         </div>
         <div class="bg-white p-5 mb-5" v-if="modifyCSSMode">

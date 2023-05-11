@@ -114,6 +114,7 @@ export default{
                 shift_start:'',
                 shift_end:'',
                 description:'',
+                repeatDays:[],
                 service:null,
                 color:null,
                 max_appointments:0
@@ -123,6 +124,7 @@ export default{
                 shift_date: '',
                 shift_start:'',
                 shift_end:'',
+                repeatDays:[],
                 description:'',
                 service:null,
                 color:null,
@@ -229,6 +231,7 @@ export default{
             axios.post(`schedules/fetch?book_schedule_date>=${start}&book_schedule_date<=${end}`).then(res=>{
                 if(!res.data.success) return;
                 res.data.result.forEach(el=>{
+                    if(this.schedules[el.book_schedule_id] != null && el != this.schedules[el.book_schedule_id]) return;
                     this.schedules[el.book_schedule_id] = {
                         id:el.book_schedule_id,
                         shift_date: el.book_schedule_date,

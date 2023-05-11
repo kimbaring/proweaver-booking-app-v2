@@ -7,17 +7,15 @@
             neutral:type=='neutral',
             
             }">
-            <h5 class="font-bold">{{this.header}}</h5>
+            <h5 class="font-bold flex items-center justify-between styled-alert-header">{{this.header}}
+                <button class="styled-alert-closebtn" @click="dismissEarly()">&#10005;</button>
+            </h5>
             <p v-html="body"></p>
-            <div class="styled-alert-timer-cont" v-if="buttons == null || buttons.length == 0" >
-                <div class="styled-alert-timer-juice" :style="{'animation-duration':duration+'ms'}" v-if="!resetAnimation"></div>
-            </div>
+
             <div class="styled-alert-buttons">
                 <button @click="$emit('onResult',b.data);dismissEarly()" v-for="b,i in buttons" :key="i">{{b.label}}</button>
             </div>
         </div>
-
-        <p class="dismisstooltip">Click anywhere to dismiss alert</p>
     </div>
 </template>
 
@@ -50,8 +48,8 @@ export default{
             }
         },
         getProperFunc(e){
-            if(this.buttons != null && this.buttons.length > 0) this.dismissIf(e);
-            else this.dismissEarly();
+            // if(this.buttons != null && this.buttons.length > 0) this.dismissIf(e);
+            // else this.dismissEarly();
         }
     },
     watch:{
@@ -63,10 +61,6 @@ export default{
                 this.resetAnimation = false;
             },5);
             
-            if(this.buttons != null && this.buttons.length > 0) return;
-            this.dismissTimer = setTimeout(()=>{
-                this.$emit('dismiss',this.show)
-            },this.duration)
         }
     }
 
@@ -121,6 +115,39 @@ button{all:unset;padding: 10px;background:transparent;color:#1b567a;font-weight:
 .styled-alert-parent.warning button{color:#4f370d}
 button:hover{scale:1.05}
 button:active{scale:0.95}
+
+.styled-alert-parent button.styled-alert-closebtn{
+    background: #822b2b;
+    color: #ffe3df;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+    padding: 0;
+    position: absolute;
+    top:-15px;
+    user-select: none;
+    right:-15px;
+    transition: 0.15s;
+}
+
+.styled-alert-parent button.styled-alert-closebtn:hover{scale:1.05}
+.styled-alert-parent button.styled-alert-closebtn:active{scale:0.95}
+
+.styled-alert-parent.warning button.styled-alert-closebtn{
+    background: #4f370d;
+    color: #ffd395;
+}
+
+.styled-alert-parent.success button.styled-alert-closebtn{
+    background: #161e16;
+    color: #c5ffc5;
+}
+
+.styled-alert-parent.danger button.styled-alert-closebtn{
+    background: #822b2b;
+    color: #ffe3df;
+}
 
 
 @keyframes beforeDismiss {

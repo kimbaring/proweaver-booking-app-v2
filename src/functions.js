@@ -146,15 +146,26 @@ function dateFormat(format='',dateString=''){
     let d = date.toLocaleString('en-US',{day:'numeric'});
     let D = date.toLocaleString('en-US',{day:'2-digit'});
     let y = date.toLocaleString('en-US',{year:'numeric'});
+    let msdate = (dateString != '') ? new Date(dateString) : new Date();
+    let getMinuteAndSeconds = msdate.toLocaleTimeString('en-US',{hour12:false,hour:  "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+    })
+    let array_getMinuteAndSeconds = getMinuteAndSeconds.split(':')
+    let getMinuteAndSeconds2 = msdate.toLocaleTimeString('en-US',{hour12:true,hour:  "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+    })
+    let array_getMinuteAndSeconds2 = getMinuteAndSeconds2.split(':')
     let h1 = date.toLocaleTimeString('en-US',{hour12:true,hour:'numeric'}).replace(/( AM)|( PM)/g,'');
-    let h = date.toLocaleTimeString('en-US',{hour12:true,hour:'2-digit'}).replace(/( AM)|( PM)/g,'');
-    let H1 = date.toLocaleTimeString('en-US',{hour12:false,hour:'numeric'});
-    let H = date.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit'});
+    let h = array_getMinuteAndSeconds2[0];
+    let H1 = date.toLocaleTimeString('en-US',{hour12:false,hour:'numeric'}).replace(/( AM)|( PM)/g,'');
+    let H = array_getMinuteAndSeconds[0];
     let i = date.toLocaleTimeString('en-US',{minute:'numeric'});
-    let I = date.toLocaleTimeString('en-US',{minute:'2-digit'});
-    let s = date.toLocaleTimeString('en-US',{second:'numeric'});
-    let S = date.toLocaleTimeString('en-US',{second:'2-digit'});
-    let a = date.toLocaleTimeString('en-US',{hour12:true,hour:'numeric'}).replace(/[0-9]+ /g,'');
+    let I = array_getMinuteAndSeconds[1];
+    let s = date.toLocaleString('en-US',{second:'numeric'});
+    let S = array_getMinuteAndSeconds[2];
+    let a = date.toLocaleString('en-US',{hour12:true,hour:'numeric'}).replace(/[0-9]+ /g,'');
 
     format = format.replace(/%M/g,M);
     format = format.replace(/%m/g,m);
@@ -215,6 +226,8 @@ class Axios{
     
 }
 
+const axios = new Axios(apiURLs.launched,{pwauth:'TWxBUUJPbUdPM1g5NDJxUm5Ncnp6UnlrZ2xRSlJyeXcvQ0RGNDVVYTRKMUprK0tPZjFrV3IrdHZrbkYvci9saGtQRGF5NnZmWEZveVl3TjNSYjVEUmc9PTo6OPee3c+XRvB5vpYEn0QVbg'});
+
 function elementLoad(selector) {
     return new Promise(resolve=>{
         var check = setInterval(function() {
@@ -244,8 +257,6 @@ const apiURLs = {
     launched: window.location.protocol+'//'+window.location.hostname+'/pw-bookingapp/api/',
 }
 
-const axios = new Axios(apiURLs.network,{pwauth:'TWxBUUJPbUdPM1g5NDJxUm5Ncnp6UnlrZ2xRSlJyeXcvQ0RGNDVVYTRKMUprK0tPZjFrV3IrdHZrbkYvci9saGtQRGF5NnZmWEZveVl3TjNSYjVEUmc9PTo6OPee3c+XRvB5vpYEn0QVbg'});
-
 function removeFix(object,fix) {
     let newObj = {};
     for (let k in object) {
@@ -257,10 +268,10 @@ function removeFix(object,fix) {
 
 class PaypalIntegration{
 
-    init(apikey,callback){
+    init(apikey,currency,callback){
         const script = document.createElement("script");
         if(document.getElementById('paypalScript') != null) document.getElementById('paypalScript').remove();
-        script.src = 'https://www.paypal.com/sdk/js?components=buttons&client-id='+apikey;
+        script.src = `https://www.paypal.com/sdk/js?components=buttons&currency=${currency}&client-id=${apikey}`;
         script.id ="paypalScript";
         document.body.appendChild(script);
         script.addEventListener("load", callback(this)); 
