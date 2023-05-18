@@ -165,7 +165,8 @@ function dateFormat(format='',dateString=''){
     let I = array_getMinuteAndSeconds[1];
     let s = date.toLocaleString('en-US',{second:'numeric'});
     let S = array_getMinuteAndSeconds[2];
-    let a = date.toLocaleString('en-US',{hour12:true,hour:'numeric'}).replace(/[0-9]+ /g,'');
+    let a = date.toLocaleString('en-US',{hour12:true,hour:'numeric'}).replace(/[0-9]+ /g,'').toLowerCase();
+    let A = date.toLocaleString('en-US',{hour12:true,hour:'numeric'}).replace(/[0-9]+ /g,'');
 
     format = format.replace(/%M/g,M);
     format = format.replace(/%m/g,m);
@@ -174,14 +175,15 @@ function dateFormat(format='',dateString=''){
     format = format.replace(/%d/g,d);
     format = format.replace(/%D/g,D);
     format = format.replace(/%y/g,y);
+    format = format.replace(/%h1/g,h1); //legacy
+    format = format.replace(/%H1/g,H1); //legacy
     format = format.replace(/%h/g,h);
-    format = format.replace(/%h1/g,h1);
     format = format.replace(/%H/g,H);
-    format = format.replace(/%H1/g,H1);
     format = format.replace(/%i/g,i);
     format = format.replace(/%I/g,I);
     format = format.replace(/%s/g,s);
     format = format.replace(/%S/g,S);
+    format = format.replace(/%A/g,A);
     format = format.replace(/%a/g,a);
     return format;
 }
@@ -226,7 +228,14 @@ class Axios{
     
 }
 
-const axios = new Axios(apiURLs.launched,{pwauth:'TWxBUUJPbUdPM1g5NDJxUm5Ncnp6UnlrZ2xRSlJyeXcvQ0RGNDVVYTRKMUprK0tPZjFrV3IrdHZrbkYvci9saGtQRGF5NnZmWEZveVl3TjNSYjVEUmc9PTo6OPee3c+XRvB5vpYEn0QVbg'});
+const apiURLs = {
+    localhost: window.location.protocol+'//localhost/pw-bookingapp/api/',
+    network: window.location.protocol+'//ns.proweaver.host/pw-bookingapp/api/',
+    launched: window.location.protocol+'//'+window.location.hostname+'/pw-bookingapp/api/',
+}
+
+
+const axios = new Axios(apiURLs.network,{pwauth:'TWxBUUJPbUdPM1g5NDJxUm5Ncnp6UnlrZ2xRSlJyeXcvQ0RGNDVVYTRKMUprK0tPZjFrV3IrdHZrbkYvci9saGtQRGF5NnZmWEZveVl3TjNSYjVEUmc9PTo6OPee3c+XRvB5vpYEn0QVbg'});
 
 function elementLoad(selector) {
     return new Promise(resolve=>{
@@ -251,11 +260,7 @@ export function watchLStore(key,func){
 export const lStore = lStoreVals.value;
 // END OF COMP FUNCTIONS FOR ASYNCSTORAGE
 
-const apiURLs = {
-    localhost: window.location.protocol+'//localhost/pw-bookingapp/api/',
-    network: window.location.protocol+'//ns.proweaver.host/pw-bookingapp/api/',
-    launched: window.location.protocol+'//'+window.location.hostname+'/pw-bookingapp/api/',
-}
+
 
 function removeFix(object,fix) {
     let newObj = {};
@@ -268,10 +273,10 @@ function removeFix(object,fix) {
 
 class PaypalIntegration{
 
-    init(apikey,currency,callback){
+    init(apikey,currency,callback,merchantID=''){
         const script = document.createElement("script");
         if(document.getElementById('paypalScript') != null) document.getElementById('paypalScript').remove();
-        script.src = `https://www.paypal.com/sdk/js?components=buttons&currency=${currency}&client-id=${apikey}`;
+        script.src = `https://www.paypal.com/sdk/js?components=buttons&currency=${currency}&client-id=${apikey}${merchantID != ''? '&merchant-id='+merchantID :'' }`;
         script.id ="paypalScript";
         document.body.appendChild(script);
         script.addEventListener("load", callback(this)); 

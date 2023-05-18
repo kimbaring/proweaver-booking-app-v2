@@ -11,6 +11,7 @@
             @onDelete="e=>deleteSchedule(e)"
             @onResult="e=>alertResult=e"
             @noServicesError="noServicesErrorStatus=true;alert('No Services Found','You might need to add a service before you can manage schedules.','danger',[],4000)"
+            @services="e=>services = e"
         />
         <StyledAlert
             :header="styledAlert.header"
@@ -23,6 +24,103 @@
             @onResult="e=>alertResult=e"
         />
 
+        <div class="scheduler-form-advanceddelete-modalparent" :class="{open:advancedDelete.open}">
+            <div class="scheduler-form-advanceddelete-modal" v-if="services != null && services.length > 0">
+                <h2 class="font-semibold">Advanced Delete</h2>
+                <div class="grid mt-1 gap-2" style="grid-template-columns: 3fr 5fr;" >
+                    <label class="mt-1">Delete schedule from dates</label>
+                    <div class="flex gap-1 items-center" >
+                        <CustomFieldVue
+                            class="flex-grow" 
+                            type="date"
+                            name="scheduler-delete-datestart"
+                            :value="advancedDelete.date_start"
+                            @on-result="e=>advancedDelete.date_start=e"
+                        />
+                        to
+                        <CustomFieldVue 
+                            class="flex-grow"
+                            type="date"
+                            name="scheduler-delete-datestart"
+                            :value="advancedDelete.date_end"
+                            @on-result="e=>advancedDelete.date_end=e"
+                        />
+                    </div>
+                    <label class="mt-1">Specific Service</label>
+                    <CustomFieldVue 
+                    type="select"
+                    name="scheduler-delete-service"
+                    columns="1fr 1fr 1fr 1fr"
+                    :values="[{label:'All Services',value:'all'},...JSON.parse(JSON.stringify(services))]"
+                    :value="advancedDelete.service"
+                    @on-result="e=>advancedDelete.service=e"
+                    />
+                    <label class="mt-1">Target Weekdays</label>
+                    <CustomFieldVue 
+                        type="checkbox-group"
+                        name="scheduler-delete-repeatdays"
+                        columns="1fr 1fr 1fr 1fr"
+                        :select="advancedDelete.days"
+                        @on-result="e=>advancedDelete.days=e"
+                        :values="[
+                            {label:'Sun',value:0},
+                            {label:'Mon',value:1},
+                            {label:'Tue',value:2},
+                            {label:'Wed',value:3},
+                            {label:'Thu',value:4},
+                            {label:'Fri',value:5},
+                            {label:'Sat',value:6}
+                        ]"
+                    />
+                </div>
+                <div class="mb-2">
+                    <h3 class="">Time Slots</h3>
+                    <div class="max-h-[100px] overflow-y-auto pr-2 overflow-x-hidden mb-2">
+                        <div class="grid gap-1 items-center mb-1" :style="{
+                                'grid-template-columns': (advancedDelete.timeSlots.length > 1) ? '1fr 20px 1fr 22px' : '1fr 20px 1fr'
+                            }" v-for="ts,i in advancedDelete.timeSlots">
+                            <CustomFieldVue 
+                                type="time"
+                                name="scheduler-form-timestart"
+                                :value="dateFormat('%H:%M','2022-01-01 '+advancedDelete.timeSlots[i].time_start)"
+                                @on-result="e=>advancedDelete.timeSlots[i].time_start=e"
+                            />
+                            to
+                            <CustomFieldVue 
+                                type="time"
+                                name="scheduler-form-timestart"
+                                :value="dateFormat('%H:%M','2022-01-01 '+advancedDelete.timeSlots[i].time_end)"
+                                @on-result="e=>advancedDelete.timeSlots[i].time_end=e"
+                            />
+                            <div>
+                                <button class="basic danger bg-red-500 text-white p-1 flex justify-center items-center w-[20px] h-[20px] p-1" v-if="advancedDelete.timeSlots.length > 1" @click="advancedDelete.timeSlots.splice(i,1)">
+                                    <i v-html="icons.trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="savechanges" @click="advancedDelete.timeSlots.push({time_start:'',time_end:''})" >Add Time Slot</button>
+                </div>
+                <div class="mt-4 mb-2 bg-red-50 p-3 border border-red-300 rounded-md">
+                    <p class="italic font-semibold text-red-700 text-sm">Important Notes:</p>
+                    <ul class="italic font-semibold text-red-700 text-sm list-disc pl-3">
+                        <li>All changes made here will directly reflect on the database. Please proceed with utmost caution.</li>
+                        <li>This does not delete the schedules that are not yet saved and will only delete the schedules that are already in the database.</li>
+                    </ul>
+                </div>
+                
+                <div class="flex justify-end gap-1">
+                    <button class="dangercolor" @click="advancedDeleteFunc">
+                        Delete Schedules
+                    </button>
+                    <button class="" @click="advancedDelete.open = false">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
 
         <div class="scheduler-calendar-topcontrols">
             <div class="scheduler-calendar-controls">
@@ -33,6 +131,7 @@
             <div>
                 <button class="viewselect" :class="{active:dragMode == 1}" @click="dragMode = (dragMode == 0) ? 1:0">Drag to: {{ (dragMode == 0) ? 'Move':'Copy' }}</button>
                 <button class="savechanges" @click="saveChanges">Save Changes</button>
+                <button class="advanceddelete" @click="advancedDelete.open = true">Advanced Delete</button>
             </div>
         </div>
         
@@ -49,7 +148,7 @@
             
 
             <div class="scheduler-calendar-item" :class="{isNotCurrentMonth:!cb.isCurrentMonth && viewMode == 0,active: new Date(cb.date + ' 00:00:00').getTime() == new Date(qd.y,qd.m,qd.d).getTime()}" v-for="cb,i in calendarBoxes" :key="i" @click="cb.onclick(cb.date,$event)" @dragenter.prevent @dragover.prevent="$event.target.closest('.scheduler-calendar-item').classList.add('dragovered')" @dragleave.prevent="$event.target.closest('.scheduler-calendar-item').classList.remove('dragovered')" @drop="$event.target.closest('.scheduler-calendar-item').classList.remove('dragovered');dropSched(cb.date,$event,1)" @dblclick="">
-                <p class="datenum"><span>{{cb.dateNum}}</span> <span class="calendar-date-tooltip" @click="addSchedule(cb.date)">Add Schedule</span></p>
+                <p class="datenum"><span>{{cb.dateNum}}</span> <span class="calendar-date-tooltip" @click="addSchedule(cb.date)">Add Schedules</span></p>
                 <div class="dayschedule-cont">
                     <div class="dayschedule" v-for="ds,i in cb.scheds" :key="i" draggable="true" @dragstart="dragSched(ds,$event,0)" @click="editSchedule(ds)" :style="'border-bottom: 3px solid '+ds.color">
                         <h5 :style="'color:'+ds.color" class="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ds.service }}</h5>
@@ -62,12 +161,6 @@
                 
             </div>
         </div>
-
-
-
-        
-
-
     </div>
 </template>
 
@@ -77,11 +170,13 @@ import {axios} from '../../functions'
 import CustomFieldVue from './CustomField.vue';
 import ScheduleSetForm from './ScheduleSetForm.vue';
 import StyledAlert from './StyledAlert.vue';
+import icons from '../../assets/icons'
 
 export default{
     components:{ScheduleSetForm,CustomFieldVue,StyledAlert},
     data(){
         return{
+            icons,
             viewMode:0,
             branches:[],
             designations:[],
@@ -97,6 +192,7 @@ export default{
             qd:{y:0,m:0,d:0},
             calendarBoxes:[],
             title:'',
+            services:[],
             noServicesErrorStatus:false,
             modalClose:true,
             styledAlert:{
@@ -114,16 +210,26 @@ export default{
                 shift_start:'',
                 shift_end:'',
                 description:'',
+                timeSlots:[{time_start:'00:00:00',time_end:'01:00:00'}],
                 repeatDays:[],
                 service:null,
                 color:null,
                 max_appointments:0
+            },
+            advancedDelete:{
+                open: false,
+                date_start: '',
+                date_end: '',
+                service: '',
+                days:[],
+                timeSlots:[{time_start:'00:00:00',time_end:'01:00:00'}]
             },
             defVals:{
                 id:'',
                 shift_date: '',
                 shift_start:'',
                 shift_end:'',
+                timeSlots:[{time_start:'00:00:00',time_end:'01:00:00'}],
                 repeatDays:[],
                 description:'',
                 service:null,
@@ -163,6 +269,16 @@ export default{
                 }
             },
             deep:true
+        },
+        'advancedDelete.open' : {
+            handler(){
+                if(this.advancedDelete.open) return
+                this.advancedDelete.date_start =  '',
+                this.advancedDelete.date_end =  '',
+                this.advancedDelete.service =  '',
+                this.advancedDelete.days = [],
+                this.advancedDelete.timeSlots = [{time_start:'00:00:00',time_end:'01:00:00'}]
+            }
         }
     },
     computed:{
@@ -222,6 +338,55 @@ export default{
 
     },
     methods:{
+        async advancedDeleteFunc(){
+            let delInfo = this.advancedDelete;
+
+            if(delInfo.date_start == ''){this.alert('Start Date is empty','Please fill in the date field next to \'from\' keyword','danger');return}
+            if(delInfo.date_end == ''){this.alert('End Date is empty','Please fill in the date field next to \'to\' keyword','danger');return}
+            if(delInfo.days == null || delInfo.days.length == 0){this.alert('Target Weekdays are empty','Please select at least one day','danger');return}
+
+            if(new Date(delInfo.date_end).getTime() < new Date(delInfo.date_start).getTime()){
+                this.alert('Reversed Time Alert','The End Date is set earlier than the Start Date', 'danger')
+                return
+            }
+            
+            let timeSlotsHasEmptyVals = false
+            delInfo.timeSlots.forEach(el=>{
+                if(el.time_start.match(/^([0-9]{2}:[0-9]{2}:[0-9]{2})|([0-9]{2}:[0-9]{2})$/g) == null 
+                || el.time_end.match(/^([0-9]{2}:[0-9]{2}:[0-9]{2})|([0-9]{2}:[0-9]{2})$/g) == null)
+                    timeSlotsHasEmptyVals = true 
+            })
+
+            if(timeSlotsHasEmptyVals) {
+                this.alert('Empty Time Slot Values','One or more fields under Time Slots are empty.', 'danger')
+                return;
+            }
+
+            let resp = await this.waitForConfirm('Confirm Deletion?',
+            `Please note that all the schedules you are about to delete will also delete the appointments that these schedules are associated with.<br><br>
+            Schedules To Delete:<br>
+            - Period: ${dateFormat('%sm %d, %y',delInfo.date_start)} - ${dateFormat('%sm %d, %y',delInfo.date_end)}<br>
+            - Service: ${delInfo.service}<br>
+            - Weekdays: ${delInfo.days.sort((a,b)=>a-b).map(el=>['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][el]).join(', ')}<br>
+            - Time slots: ${delInfo.timeSlots.length} time slot/s
+            `
+            ,'warning',[
+                {label:'Yes',data:true},
+                {label:'No',data:false},
+            ],3000);
+            if(!resp) return
+
+            axios.post('schedules/advancedDelete',null,{
+                filterJSON: JSON.stringify(delInfo)
+            }).then(()=>{
+                this.schedules = {}
+                this.fetchSchedulesFromServer()
+                this.advancedDelete.open = false
+            })
+
+
+        },
+
         fetchSchedulesFromServer(){
             let start = dateFormat('%y-%m2-%D', new Date(this.cc.y,this.cc.m-1,1).getTime())
             let end = dateFormat('%y-%m2-%D', new Date(this.cc.y,this.cc.m+2,0).getTime())
@@ -229,7 +394,10 @@ export default{
             this.lastFetch.y = this.cc.y;
             this.hasFetched = true;
             axios.post(`schedules/fetch?book_schedule_date>=${start}&book_schedule_date<=${end}`).then(res=>{
-                if(!res.data.success) return;
+                if(!res.data.success){
+                    this.schedules = {}
+                    return
+                }
                 res.data.result.forEach(el=>{
                     if(this.schedules[el.book_schedule_id] != null && el != this.schedules[el.book_schedule_id]) return;
                     this.schedules[el.book_schedule_id] = {
@@ -409,10 +577,10 @@ export default{
                 return;
             }
 
-            // if(this.getScheduleEnd(e.shift_date,e.shift_start,e.shift_end) <= new Date().getTime()){
-            //     this.alert('Backdated Error','You cannot create a finished schedule.','danger',[],1500);
-            //     return;
-            // }
+            if(this.getScheduleEnd(e.shift_date,e.shift_start,e.shift_end) <= new Date().getTime()){
+                this.alert('Backdated Error','You cannot create a finished schedule.','danger',[],1500);
+                return;
+            }
 
             if(this.checkIfIsOneDayOrMore(e.shift_date,e.shift_start,e.shift_end)){
                 this.alert('Schedule Duration Exceeded','The scheduler may only handle schedules that does not exceed or equal to 24 hours.','danger',[],2500);
@@ -432,14 +600,23 @@ export default{
 
                     newSched.shift_date = dateFormat('%y-%m2-%D',loopDate.getTime());
 
-                    this.schedules[newSched.id] = newSched;
-                    this.editTracker.created.push(newSched.id);
+                    newSched.timeSlots.forEach((el,i)=>{
+                        let copyNewSched = JSON.parse(JSON.stringify(newSched))
+                        copyNewSched.shift_start = el.time_start
+                        copyNewSched.shift_end = el.time_end
+                        copyNewSched.id = copyNewSched.id+'-'+i
+                        this.schedules[copyNewSched.id] = copyNewSched;
+                        this.editTracker.created.push(copyNewSched.id);
+                    })
+
                     iteration++;
 
                 }
 
                 loopDate.setDate(loopDate.getDate() + 1);
             }
+
+
             this.modalClose = true;
             this.buildCalendar();
 
@@ -681,7 +858,41 @@ export default{
     border-radius: 5px;
 }
 
+.scheduler-form-advanceddelete-modalparent{
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: rgba(0, 0, 0, 0.3);
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: 0.2s;
+}
 
+.scheduler-form-advanceddelete-modalparent.open{
+    z-index: 99;
+    opacity: 1;
+}
+
+.scheduler-form-advanceddelete-modal{
+    max-width: 600px;
+    width: 100%;
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    scale:0;
+    transition: 0.2s;
+}
+
+
+
+.scheduler-form-advanceddelete-modalparent.open .scheduler-form-advanceddelete-modal{
+    scale:1
+}
 
 .scheduler-calendar-employees{
     display: grid;
@@ -718,9 +929,14 @@ button.viewselect{
 /* button.viewselect:first-of-type{border-left:1px solid #434343;} */
 button.viewselect.active{background:#434343;color:#fff;}
 
-button{all:unset;padding: 10px;background:#434343;color:#fff;border-radius: 5px;transition: 0.2s;font-size: 14px;line-height: 14px;}
+button{all:unset;padding: 10px;border-radius: 5px;transition: 0.2s;font-size: 14px;line-height: 14px;color:#fff;}
+button:not(.basic):not(.viewselect):not(.savechanges):not(.advanceddelete){
+    background:#434343;
+}
 button:hover{scale:1.05}
 button:active{scale:0.95}
+.scheduler-form-advanceddelete-modal button.danger{background: #a2493e;padding: 5px;border-radius: 5px;}
+.scheduler-form-advanceddelete-modal button.dangercolor{background: #a2493e !important;}
 .scheduler-calendar-item{border-bottom:1px solid #ddd;transition:0.2s;border-radius: 0 0 5px 0;}
 .scheduler-calendar-item.title{padding: 5px;text-align: center;}
 .scheduler-calendar-item .datenum{margin:0;width: 30px;height:30px;text-align: center;line-height: 30px;border-right:1px solid #ddd;border-bottom:1px solid #ddd;margin-bottom: 10px;transition:0.2s;display: flex;align-items: center;overflow: hidden;}
@@ -745,7 +961,8 @@ button:active{scale:0.95}
 .dayschedule *{pointer-events: none;}
 .dayschedule h3{}
 
-.savechanges{background: rgb(64, 122, 64);margin: 0 5px;}
+.savechanges{background: #407a40;margin: 0 5px;}
+.advanceddelete{background: rgb(178, 71, 53);}
 .scheduler-calendar-days .dayschedule:hover{scale: 1.02;box-shadow: 0 0px 10px #aaa;}
 
 .dayschedule-color{border:1px solid #ddd;display: inline-block;width:10px;height:10px;margin:0 5px;vertical-align: middle;border-radius: 50%;margin-bottom: 2px;}

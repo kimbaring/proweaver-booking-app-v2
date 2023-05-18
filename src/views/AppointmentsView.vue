@@ -4,10 +4,12 @@ import {onMounted, ref} from 'vue';
 import {axios,dateFormat} from '../functions'
 import icons from '../assets/icons';
 import CustomField from '../components/SchedulerComps/CustomField.vue'
+import AppointmentsCalendar from '../components/AppointmentsCalendar.vue'
 
 let locations = ref(0)
 let services = ref(0)
 let workers = ref(0)
+let viewMode = ref(0)
 let fetchSettings = ref({
   date: dateFormat('%y-%M-%D'),
   orderBy: 'book_appointment_id',
@@ -141,8 +143,9 @@ function parseJSON(mix){
             </tr>
           </table>
           <div class="flex justify-end my-5">
-            <button v-if="[0,2,'0','2'].includes(modal.info.book_appointment_status)" class="transition flex gap-2 items-end rounded-md w-[100px] text-white bg-green-700 mx-[4px] p-1.5 text-base hover:scale-105 active:scale-95" @click="changeStatus(modal.info.book_appointment_id,1)"><i class="text-base w-[20px] h-[20px] object-contain" v-html="icons.thumbsUp" ></i> Approve</button>
-            <button v-if="[0,1,'0','1'].includes(modal.info.book_appointment_status)" class="transition flex gap-2 items-center rounded-md w-[100px] text-white bg-red-700 mx-[2px] p-1.5 text-base hover:scale-105 active:scale-95" @click="changeStatus(modal.info.book_appointment_id,2)"><i class="text-base w-[20px] h-[20px] object-contain" v-html="icons.thumbsDown" ></i> Deny</button>
+            <button v-if="[0,2,'0','2'].includes(modal.info.book_appointment_status)" class="transition flex gap-2 items-end rounded-md w-[100px] text-white bg-green-700 mx-[4px] p-1.5 text-base hover:scale-105 active:scale-95" @click="changeStatus(modal.info.book_appointment_id,1,modal.info.id)"><i class="text-base w-[20px] h-[20px] object-contain" v-html="icons.thumbsUp" ></i> Approve</button>
+            <button v-if="[0,1,'0','1'].includes(modal.info.book_appointment_status)" class="transition flex gap-2 items-center rounded-md w-[80px] text-white bg-red-700 mx-[2px] p-1.5 text-base hover:scale-105 active:scale-95" @click="changeStatus(modal.info.book_appointment_id,2,modal.info.id)"><i class="text-base w-[20px] h-[20px] object-contain mt-1" v-html="icons.thumbsDown" ></i> Deny</button>
+            <button v-if="[0,1,'0','1'].includes(modal.info.book_appointment_status)" class="transition flex gap-2 items-center rounded-md w-[120px] text-white bg-teal-700 mx-[2px] p-1.5 text-base hover:scale-105 active:scale-95" @click="changeStatus(modal.info.book_appointment_id,3,modal.info.id)"><i class="text-base mt-1 w-[20px] h-[20px] object-contain" v-html="icons.check" ></i> Completed</button>
           </div>
           
         </div>
@@ -150,7 +153,14 @@ function parseJSON(mix){
   </div>
   <MasterLayoutVue>
     <h1 class="text-3xl font-bold border-b pb-3 mb-3 flex items-end">Appointments</h1>
-    <div class="flex gap-5 items-end border-b pb-4">
+    <div class="flex w-max border border-gray-900 mb-5 rounded-full overflow-hidden">
+      <button class="p-1 px-2 pl-4 transition" :class="{'bg-gray-900 text-white':viewMode == 0}" @click="viewMode = 0">List View</button>
+      <button class="p-1 px-2 pr-4 transition" :class="{'bg-gray-900 text-white':viewMode == 1}" @click="viewMode = 1">Month View</button>
+    </div>
+
+
+    <div v-show="viewMode == 0">
+      <div class="flex gap-5 items-end border-b pb-4">
       <div>
         <label class="mb-1 block">Date:</label>
         <input type="date" class="block border p-1 border-gray-300 rounded-md" v-model="fetchSettings.date">
@@ -167,7 +177,7 @@ function parseJSON(mix){
               {label:'Date Received',value:'book_appointment_id'},
               {label:'Scheduled Date',value:'book_schedule_date,book_schedule_timestart'},
               {label:'Service',value:'book_appointment_servicesname'},
-              {label:'Status',value:'book_appointment_servicesname'},
+              {label:'Status',value:'book_appointment_status'},
             ]"
           />
           <CustomField
@@ -210,8 +220,6 @@ function parseJSON(mix){
         <input type="checkbox" id="pwaf-includefinish" @change="fetchSettings.includeFinished = $event.target.checked">
       </div>
     </div>
-
-
     <p class="mt-4 text-center border border-gray-300 p-3 italic rounded-md" v-if="appointments.length == 0">No appointment requests scheduled on this date...</p>
     <table class="w-full border-separate border-spacing-y-2 border-spacing-x-0" v-if="appointments.length > 0">
       <tr>
@@ -244,5 +252,11 @@ function parseJSON(mix){
       <label>Pages:</label>
       <button @click="fetchPage(i)" class="w-[25px] h-[25px] shadow-md bg-gray-100 hover:underline hover:bg-gray-200 active:bg-gray-900 active:text-white transition" v-for="i in Math.ceil(appointmentsMaxCount/fetchSettings.results)" :style="i == appointmentsIndex ? 'background:rgb(17,24,39);color:#fff' : ''">{{ i }}</button>
     </div>
+    </div>
+
+    <div v-show="viewMode == 1">
+      <AppointmentsCalendar />
+    </div>
+    
   </MasterLayoutVue>
 </template>

@@ -67,7 +67,6 @@ export default({
             this.valueC = this.value;
 
             // if(this.type == 'select') this.console.log(this.type == 'select',this.values.length, this.name, this.values.filter(el=>el.value==this.value)[0].label)
-
             if(this.type == 'select') if(this.values.length > 0 && this.value != null && this.value != '' && this.values.filter(el=>el.value==this.value) != null) this.selectedValue = this.values.filter(el=>el.value==this.value)[0].label
         },
         values:{

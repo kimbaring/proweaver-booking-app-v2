@@ -69,18 +69,18 @@ export const pageDefault = {
 
 export const formData = {
     "form_title": "Default Form",
-    "declare": { "paypalClientID": "", "paypalCurrency": "USD","notifEmails":[]},
-    "conditionals": [],
+    "declare": { "paypalClientID": "", "paypalCurrency": "USD","notifEmails":[],paypalEmail:'',nameIndex:'default_name',phoneIndex:''},
+    "conditionals": '20 in_array {20,50,70,80} && 20 == 20 ? default_location.hidden = true',
     "design": { "primaryColor": "#446523", "pagenavDesign": "row", "css": null },
     "pages": [
         {
             "page_title": "Schedule Selection",
             "page_columns": 2,
             "page_fields": [
-                { "content_type": "rbfield","id":"default_location", "column": 2, "endpoint": "location/fetch", "based": "book_location_name", "type": "radio", "value": "", "text": "Select Location" },
-                { "content_type": "rbfield","id":"default_worker", "column": 2, "endpoint": "worker/fetch", "based": "book_worker_name", "type": "radio", "value": "", "text": "Select Worker" },
-                { "content_type": "rbfield","id":"default_services", "column": 2, "endpoint": "services/fetch", "based": "book_services_name", "type": "radio", "value": "", "text": "Select Service" },
-                { "content_type": "scheduler", "id":"default_scheduler", "column": 1, "text": "Scheduler", "label": "" }
+                { "content_type": "rbfield","id":"default_location", "column": 2, "endpoint": "location/fetch", "based": "book_location_name", "type": "select", "value": "", "text": "Select Location" },
+                { "content_type": "rbfield","id":"default_worker", "column": 2, "endpoint": "worker/fetch", "based": "book_worker_name", "type": "select", "value": "", "text": "Select Worker" },
+                { "content_type": "rbfield","id":"default_services", "column": 2, "endpoint": "services/fetch", "based": "book_services_name", "type": "select", "value": "", "text": "Select Service" },
+                { "content_type": "scheduler", "id":"default_scheduler", "column": 1, "text": "Scheduler" }
             ]
         },
         {

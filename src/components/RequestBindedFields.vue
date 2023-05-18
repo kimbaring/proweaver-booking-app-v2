@@ -37,8 +37,7 @@ onMounted(()=>{
         }
 
         values.value = res.data.result
-
-        if(props.value == '') {
+        if(['',null].includes(props.value)) {
             selectedValue.value = values.value[0][props.based];
             selectedValueInfo.value = values.value[0];
         }

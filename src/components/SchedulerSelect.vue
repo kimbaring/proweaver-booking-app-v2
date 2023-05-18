@@ -110,7 +110,7 @@ export default{
         async fetchScheds(){
             if(this.fetching) return;
             this.fetching = true;
-            let date = new Date(this.cc.y,this.cc.m,this.cc.d);
+            let date = new Date(this.qd.y,this.qd.m,this.qd.d);
             this.availDates = [];
             this.availableSchedules = [];
             let includeService = (this.service != '' && this.service != null) ? '&service='+this.service : ''

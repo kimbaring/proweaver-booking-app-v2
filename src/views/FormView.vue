@@ -37,7 +37,7 @@ axios.get(baseurl()+'/constants.json').then(res=>{
         }catch(err){}
         
         if(form.value.declare.paypalClientID != '' && form.value.declare.paypalClientID != null)
-            Paypal.init(form.value.declare.paypalClientID,form.value.declare.paypalCurrency,()=>{paypalLoaded.value = true})
+            Paypal.init(form.value.declare.paypalClientID,form.value.declare.paypalCurrency,()=>{paypalLoaded.value = true},form.value.declare.paypalEmail)
 
 
     },100)
@@ -61,6 +61,18 @@ let currentPageFieldIds = ref([]);
 let selectedScheduleService = ref('');
 let formId = -1;
 let userReceiver = ''
+let indexFieldVals = ref({
+    name:'',
+    phone:''
+})
+let initialVals = ref({})
+
+let allFields = computed(()=>{
+    let pageFields = {}
+    if(form.value == null) return
+    form.value.pages.forEach(el2=>el2.page_fields.forEach(el=>pageFields[el.id] = el))
+    return pageFields
+})
 
 const currentPage = computed(()=>{
     pageColumnResponsive.value = form.value.pages[currentPageIndex.value].page_columns;
@@ -143,6 +155,18 @@ function selectedService(e){
     setTimeout(() => {
         currentPage.value.page_fields[order] = temp
     }, 10);
+}
+
+function paidPaypal(id,fieldLabel,fieldValue,f){
+    organizeInput(id,fieldLabel,fieldValue,f);
+    if(f.options.paypal_value_basis != 'service-based') return;
+    form.value.pages.forEach((el2,i)=>{
+        let index = el2.page_fields.findIndex(el=>el.content_type == 'rbfield' && el.endpoint.includes('services'))
+        if(index == -1) return
+        form.value.pages[i].page_fields[index].disabledByPayment = true
+        form.value.pages[i].page_fields[index].readonly = true
+    })
+    
 }
 
 function checkGetter(){
@@ -239,6 +263,31 @@ function getFieldValue(id){
 function organizeInput(id,fieldLabel,fieldValue,f){
     let fieldId = currentPageFieldIds.value[currentPageFieldIds.value.findIndex(el=>el.includes(id))];
     let index = userInput.value.findIndex(el=>el.id.includes(fieldId));
+
+    f.value = fieldValue
+
+    // conditional effects
+    let textRules = form.value.conditionals.split(';;')
+
+    textRules.forEach(el=>{
+        el = el.trim()  
+        if(el == '' || el.match(/^\s+$/g)) return
+        let condition = parseConditions(substituteFieldPlaceholders(el.split('?')[0].trim()))
+        let effect = tokenizeEffects(el.split('?')[1].trim().split(';').map(effel=>effel.trim()))
+
+        // console.log(evaluateConditions(condition),condition)
+        effectsToggler(el.split('?')[0].trim(),effect,evaluateConditions(condition))
+    })
+
+    // end of conditional effects
+
+
+    if(form.value.declare.nameIndex == f.id){
+        indexFieldVals.value.name = fieldValue
+    }else if(form.value.declare.phoneIndex == f.id){
+        indexFieldVals.value.phone = fieldValue
+    }
+
 
     if(f.content_type == 'field' && f.type == 'email' && (f.useemail === 'true' || f.useemail === true) && !['',null].includes(fieldValue)){
         userReceiver = fieldValue;
@@ -341,8 +390,10 @@ function submit(){
         book_appointment_servicesname:services.value ?? '',
         book_appointment_worker:worker.value ?? '',
         book_appointment_scheduleid:schedule.value ?? '',
+        book_appointment_name: indexFieldVals.value.name,
+        book_appointment_phone: indexFieldVals.value.phone,
         book_appointment_email : userReceiver,
-        book_appointment_custominputs: JSON.stringify(userInput.value)
+        book_appointment_custominputs: JSON.stringify(userInput.value),
     }).then(res=>{
         if(res.data == null || !res.data.success){
             alert('Something went wrong! You may contact the website admin and inform them about this problem. Your feedback will be appreciated!')
@@ -400,10 +451,222 @@ async function checkResponsive(){
 function fetchingSchedules(e){
     let index = currentPage.value.page_fields.findIndex(el=>el.content_type == 'rbfield' && el.endpoint.includes('services'))
     if(index == -1) return
+    if(currentPage.value.page_fields[index].disabledByPayment) {
+        currentPage.value.page_fields[index].readonly = true
+        return
+    }
     if(e) currentPage.value.page_fields[index].readonly = true
     else currentPage.value.page_fields[index].readonly = false
 }
 
+function parseConditions(text) {   
+    if(['',null,undefined].includes(text)) return
+    const conditions = [];
+    let logicalOperators = text.match(/\s+\|\|\s+|\s+&&\s+/g)
+    text = text.split(/\s+\|\|\s+|\s+&&\s+/g)
+
+    const regex = /(==|!=|>|<|>=|<=|in_array)/g;
+
+    for(let i = 0 ; i < text.length; i++){
+        let el = text[i]
+        let match = el.split(regex)
+
+        let leftOperand = match[0].trim();
+        const operator = match[1].trim();
+        let rightOperand = match[2].trim();
+
+        if(leftOperand.startsWith("(") && leftOperand.endsWith(")")){
+            leftOperand = leftOperand.slice(1, -1);
+            leftOperand = Number(leftOperand);
+        }
+            
+        if (rightOperand.startsWith("(") && rightOperand.endsWith(")")) {
+            rightOperand = rightOperand.slice(1, -1);
+            rightOperand = Number(rightOperand); // Typecast as number
+        } else if (rightOperand.startsWith("{") && rightOperand.endsWith("}")) {
+            rightOperand = rightOperand.slice(1, -1).split(',').map(item => item.trim());
+        }else{
+            rightOperand = rightOperand.trim()
+        }
+
+        conditions.push({
+            leftOperand,
+            operator,
+            rightOperand
+        });
+    }
+    
+    return {
+        conditions,
+        logicalOperators
+    };
+}
+
+function evaluateConditions(parsed) {
+    const {conditions, logicalOperators} = parsed
+    
+
+    let lastResult = null;
+    let logOptIndex = 0
+    for (const condition of conditions) {
+        const { leftOperand, operator, rightOperand } = condition;
+
+        let leftValue = leftOperand;
+        if (typeof leftValue === 'string' && !isNaN(leftValue)) {
+        leftValue = Number(leftValue);
+        }
+
+        let rightValue = rightOperand;
+        if (typeof rightValue === 'string' && !isNaN(rightValue)) {
+        rightValue = Number(rightValue);
+        }
+
+        let result;
+        switch (operator) {
+        case '!=':
+            result = leftValue != rightValue;
+            break;
+        case '>':
+            result = leftValue > rightValue;
+            break;
+        case '<':
+            result = leftValue < rightValue;
+            break;
+        case '>=':
+            result = leftValue >= rightValue;
+            break;
+        case '<=':
+            result = leftValue <= rightValue;
+            break;
+        case '==':
+            result = leftValue == rightValue;
+            break;  
+        case 'in_array':
+            let val = leftOperand
+            if(typeof leftOperand != 'string') val = String(val)
+            result = rightValue.includes(val)
+            break;
+        default:
+            result = false;
+        }
+        
+        if(lastResult != null){
+            if(logicalOperators[logOptIndex] == ' || ')
+            lastResult = lastResult || result
+        if(logicalOperators[logOptIndex] == ' && ')
+            lastResult = lastResult && result
+        logOptIndex++
+        }else{
+            lastResult = result
+        }
+    }
+    
+    return lastResult
+
+}
+
+function substituteFieldPlaceholders(text){
+    return text.replace(/\[(\w+)\]/g, (match, id) => allFields.value[id].value);
+}
+
+function tokenizeEffects(effectsArray) {
+  function tokenizeString(inputString) {
+    const regex = /\s+|\[([^[\]]+)\]|([.=])/g;
+    return inputString.split(regex).filter(token => token != null).filter(token => token.trim() !== '');
+  }
+
+  let effects = [];
+  effectsArray.forEach(el => {
+    let tokenized = tokenizeString(el);
+    let field = tokenized[0].startsWith('[') && tokenized[0].endsWith(']')
+      ? tokenized[0].slice(1, -1)
+      : tokenized[0];
+
+    effects.push({
+      field: field,
+      prop: tokenized[2],
+      value: tokenized[4],
+    });
+  });
+  return effects;
+}
+
+function parseValue(value){
+    if(value == null || value == undefined) return value
+    if(value.match(/^[0-9]+$/g) != null){ //match integer
+       return parseInt(value);
+    }else if(value.match(/^[0-9]+.[0-9]+$/g)){
+       return parseFloat(value);
+    }else if(value == 'true'){
+       return true;
+    }else if(value == 'false'){
+       return false;
+    }else{
+        return value
+    }
+}
+
+function effectsToggler(conditionText,effects,evaluation){
+    if(initialVals.value[conditionText] == null){
+        initialVals.value[conditionText] = {}
+        effects.forEach(el=>{
+            if(initialVals.value[conditionText][el.field] == null){
+                initialVals.value[conditionText][el.field] = {}
+            }
+
+            initialVals.value[conditionText][el.field][el.prop] = allFields.value[el.field][el.prop]
+        })
+    }
+
+    if(evaluation){
+        effects.forEach(el=>{
+            allFields.value[el.field][el.prop] = parseValue(el.value)
+
+            if(el.prop == 'required' || el.prop == 'hidden'){
+                if(el.prop == 'hidden' && parseValue(el.value) == false) return
+                if(el.prop == 'required' && parseValue(el.value) == true) return
+                let id = allFields.value[el.field].content_type == 'field' ? 
+                    allFields.value[el.field].name : allFields.value[el.field].text
+
+                let index = currentPageRequired.value.findIndex(el=>el.includes(id))
+                requiredFields.value.splice(requiredFields.value.findIndex(el=>el.id.includes(id)), 1)
+                currentPageRequired.value.splice(index,1);
+                currentPageRequiredLabels.value.splice(index,1);
+            }
+        })
+
+        
+    }else{
+        for(let field in initialVals.value[conditionText]){
+            initialVals.value[conditionText][field]
+            for(let prop in initialVals.value[conditionText][field]){
+                allFields.value[field][prop] = initialVals.value[conditionText][field][prop]
+                let el = {
+                    prop,
+                    value: initialVals.value[conditionText][field][prop]
+                }
+                
+                if(el.prop == 'required' || el.prop == 'hidden'){
+                    if(el.prop == 'hidden' && parseValue(el.value) == false) return
+                    if(el.prop == 'required' && parseValue(el.value) == true) return
+                    let id = allFields.value[field].content_type == 'field' ? 
+                        allFields.value[field].name : allFields.value[field].text
+
+                    let index = currentPageRequired.value.findIndex(el=>el.includes(id))
+                    requiredFields.value.splice(requiredFields.value.findIndex(el=>el.id.includes(id)), 1)
+                    currentPageRequired.value.splice(index,1);
+                    currentPageRequiredLabels.value.splice(index,1);
+                }
+            }
+        }
+    }
+
+    
+
+    
+   
+    // initialVals.value[conditionText] = 
+}
 
 </script>
 <template>
@@ -422,7 +685,86 @@ function fetchingSchedules(e){
             <div class="pwfv-maingrid " :class="{'two-cols':currentPage.page_columns == 2}">
                 <p class="pwfv-required-reminder" v-if="currentPageRequired.length > 0">Required Fields are marked with (*)</p>
                 <div class="pwfv-maingrid-1">
-                    <div class="pwfv-fielditem" v-for="f,i in filteredByColumn(1)" :key="i">
+                    <div class="pwfv-fielditem" v-for="f,i in filteredByColumn(1)" v-show="f != null && (f.hidden == undefined || f.hidden == false)">
+                        <!-- field renderer start-->
+                        <!-- v-if="f != null && " -->
+                        
+                        <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes(getId('pwid='+f.endpoint.split('/')[0],i))">
+                            
+                            <label class="pwfv-fieldlabel">{{ f.text }} <span>*</span></label>
+                            <RequestBindedFields
+                                :endpoint="f.endpoint"
+                                :based="f.based"
+                                :type="f.type"
+                                :value="getFieldValue('pwid='+f.endpoint.split('/')[0])"
+                                :readonly="f.readonly"
+                                @onResult="e=>organizeInput('pwid='+f.endpoint.split('/')[0],f.text,e,f)"
+                                @onEmpty="deleteRBField('pwid='+f.endpoint.split('/')[0])"
+                            />
+                        </div>
+                        <div v-if="f.content_type == 'scheduler'">
+                            
+                            <label class="pwfv-fieldlabel">{{ f.text }} <span>*</span></label>
+                            <SchedulerSelect
+                                :schedule="getFieldValue('pwid=scheduler')"
+                                :service="getFieldValue('pwid=services')"
+                                @onFetch="e=>fetchingSchedules(e)"
+                                @selectedService="e=>selectedService(e)"
+                                @onResult="e=>organizeInput('pwid=scheduler',f.text,e,f)"
+                            />
+                        </div>
+                        <div v-if="f.content_type == 'text'" v-html="f.text" :style="f.styles"></div>
+                        <div v-if="f.content_type == 'field' && !['checkbox','paypal'].includes(f.type)">
+                            <label class="pwfv-fieldlabel">{{ f.label }} <span v-if="f.required">*</span></label>
+                            <TemplatedFields 
+                            :type="f.type"
+                            :name="f.name"
+                            :columns="f.grid"
+                            :readonly="f.readonly"
+                            :required="f.required"
+                            :placeholder="f.placeholder"
+                            :values="f.values"
+                            :select="f.type=='checkbox-group' ? getFieldValue(f.name) : null"
+                            :options="f.options"
+                            :index="f.index"
+                            :value="getFieldValue(f.name)"
+                            @onResult="e=>organizeInput(f.name,f.label,e,f)"
+                            />
+                        </div>
+                        <div v-if="f.content_type == 'field' && f.type == 'checkbox'">
+                            <TemplatedFields 
+                            :type="f.type"
+                            :name="f.name"
+                            :columns="f.grid"
+                            :readonly="f.readonly"
+                            :required="f.required"
+                            :placeholder="f.placeholder"
+                            :values="f.values"
+                            :select="f.type=='checkbox-group' ? getFieldValue(f.name) : null"
+                            :options="f.options"
+                            :index="f.index"
+                            :value="getFieldValue(f.name)"
+                            @onResult="e=>organizeInput(f.name,f.label,e,f)"
+                            />
+                            <label :for="f.name" class="pwfvf-checkbox-label">{{ f.label }} <span v-if="f.required">*</span></label>
+                        </div>
+                        <div v-if="f.content_type == 'field' && f.type == 'paypal' && !refreshPayPal">
+                            <PayPalButtons
+                                :service="getFieldValue('pwid=services')"
+                                :fieldData="JSON.parse(JSON.stringify(f))"
+                                :paid="getFieldValue(f.name)"
+                                :currency="form.declare.paypalCurrency"
+                                :paymentFunc="paidPaypal"
+                                :paymentFuncParams="[f.name,f.label,f]"
+                                @onEmpty="()=>deletePaypalAsPayment(f)"
+                                @onLoaded="()=>addPaypalAsPayment(f)"
+                            />
+                        </div>
+                        <!-- field renderer end-->
+                    </div>
+                </div>
+                <div class="pwfv-maingrid-2" v-if="currentPage.page_columns == 2">
+                    <div class="pwfv-fielditem " v-for="f,i in filteredByColumn(2)" v-show="f != null && (f.hidden == undefined || f.hidden == false)" :key="i">
                         <!-- field renderer start-->
                         <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes(getId('pwid='+f.endpoint.split('/')[0],i))">
                             
@@ -489,82 +831,8 @@ function fetchingSchedules(e){
                                 :fieldData="JSON.parse(JSON.stringify(f))"
                                 :paid="getFieldValue(f.name)"
                                 :currency="form.declare.paypalCurrency"
-                                @onPayment="e=>organizeInput(f.name,f.label,e,f)"
-                                @onEmpty="()=>deletePaypalAsPayment(f)"
-                                @onLoaded="()=>addPaypalAsPayment(f)"
-                            />
-                        </div>
-                        <!-- field renderer end-->
-                    </div>
-                </div>
-                <div class="pwfv-maingrid-2" v-if="currentPage.page_columns == 2">
-                    <div class="pwfv-fielditem " v-for="f,i in filteredByColumn(2)" :key="i">
-                        <!-- field renderer start-->
-                        <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes(getId('pwid='+f.endpoint.split('/')[0],i))">
-                            
-                            <label class="pwfv-fieldlabel">{{ f.text }} <span>*</span></label>
-                            <RequestBindedFields
-                                :endpoint="f.endpoint"
-                                :based="f.based"
-                                :type="f.type"
-                                :value="getFieldValue('pwid='+f.endpoint.split('/')[0])"
-                                :readonly="f.readonly"
-                                @onResult="e=>organizeInput('pwid='+f.endpoint.split('/')[0],f.text,e,f)"
-                                @onEmpty="deleteRBField('pwid='+f.endpoint.split('/')[0])"
-                            />
-                        </div>
-                        <div v-if="f.content_type == 'scheduler'">
-                            
-                            <label class="pwfv-fieldlabel">{{ f.text }} <span>*</span></label>
-                            <SchedulerSelect
-                                :schedule="getFieldValue('pwid=scheduler')"
-                                :service="getFieldValue('pwid=services')"
-                                @onFetch="e=>fetchingSchedules(e)"
-                                @selectedService="e=>selectedService(e)"
-                                @onResult="e=>organizeInput('pwid=scheduler',f.text,e,f)"
-                            />
-                        </div>
-                        <div v-if="f.content_type == 'text'" v-html="f.text" :style="f.styles"></div>
-                        <div v-if="f.content_type == 'field' && !['checkbox','paypal'].includes(f.type)">
-                            <label class="pwfv-fieldlabel">{{ f.label }} <span v-if="f.required">*</span></label>
-                            <TemplatedFields 
-                            :type="f.type"
-                            :name="f.name"
-                            :columns="f.grid"
-                            :readonly="f.readonly"
-                            :required="f.required"
-                            :placeholder="f.placeholder"
-                            :values="f.values"
-                            :select="f.type=='checkbox-group' ? getFieldValue(f.name) : null"
-                            :options="f.options"
-                            :index="f.index"
-                            :value="getFieldValue(f.name)"
-                            @onResult="e=>organizeInput(f.name,f.label,e,f)"
-                            />
-                        </div>
-                        <div v-if="f.content_type == 'field' && f.type == 'checkbox'">
-                            <TemplatedFields 
-                            :type="f.type"
-                            :name="f.name"
-                            :columns="f.grid"
-                            :readonly="f.readonly"
-                            :required="f.required"
-                            :placeholder="f.placeholder"
-                            :values="f.values"
-                            :select="f.type=='checkbox-group' ? getFieldValue(f.name) : null"
-                            :options="f.options"
-                            :index="f.index"
-                            :value="getFieldValue(f.name)"
-                            @onResult="e=>organizeInput(f.name,f.label,e,f)"
-                            />
-                            <label :for="f.name" class="pwfvf-checkbox-label">{{ f.label }} <span v-if="f.required">*</span></label>
-                        </div>
-                        <div v-if="f.content_type == 'field' && f.type == 'paypal' && !refreshPayPal">
-                            <PayPalButtons
-                                :service="getFieldValue('pwid=services')"
-                                :fieldData="JSON.parse(JSON.stringify(f))"
-                                :paid="getFieldValue(f.name)"
-                                @onPayment="e=>organizeInput(f.name,f.label,e,f)"
+                                :paymentFunc="paidPaypal"
+                                :paymentFuncParams="[f.name,f.label,f]"
                                 @onEmpty="()=>deletePaypalAsPayment(f)"
                                 @onLoaded="()=>addPaypalAsPayment(f)"
                             />

@@ -7,6 +7,7 @@ import {ref,computed,watch} from 'vue'
 import icons from '../assets/icons'
 import CodeMirror from '../components/CodeMirror.vue'
 import {axios} from '../functions'
+import ConditionScriptor from '../components/ConditionScriptor.vue'
 
 
 let form = ref(JSON.parse(JSON.stringify(formData)));
@@ -19,6 +20,7 @@ let migrateFieldMode = ref(false)
 let queCSS = ref(form.value.design.css)
 let tempCSS = ref(form.value.design.css)
 let modifyCSSMode = ref(false);
+let modifyConditionalEffects = ref(false);
 let queField = ref(null)
 let targetFieldIndex = ref(0)
 let targetPageIndex = ref(0)
@@ -282,7 +284,7 @@ function saveChanges(){
 
 function cancelEdit(){
   if(!confirm('Any unsaved changes will disappear. Confirm?')) return;
-  router.go(-1);
+  router.push('/forms');
 }
 
 </script>
@@ -294,6 +296,36 @@ function cancelEdit(){
       <div class="bg-gray-900 p-3 py-5 text-white rounded-t-lg">
         <h2 class="font-bold text-lg">Edit {{ queField.content_type.charAt(0).toUpperCase()+queField.content_type.substring(1) }}</h2>
       </div>
+
+      <div class="p-3 rounded-b-lg pb-0" v-if="queField.content_type == 'rbfield' || queField.content_type == 'scheduler'">
+        <label for="pwfb-editfield-type" v-if="queField.content_type == 'rbfield'" class="mb-1 block">Type</label>
+        <CustomField
+          v-if="queField.content_type == 'rbfield'"
+          name="pwfb-editfield-type"
+          type="select"
+          placeholder="e.g. Book Form"
+          columns="1fr 1fr"
+          :value="queField.type"
+          :values="[
+            {label:'Radio Group',value:'radio'},
+            {label:'Select',value:'select'},
+          ]"
+          
+          @onResult="e=>{queField.type = e;}"
+        />
+        <label for="pwfb-editfield-label" class="mt-2 mb-1 block">Label</label>
+        <CustomField
+          name="pwfb-editfield-label"
+          type="text"
+          placeholder="Enter field label"
+          :value="queField.text"
+          @onResult="e=>{queField.text = e;}"
+        />
+      </div>
+
+      
+
+
       <div class="p-3 rounded-b-lg" v-if="!['field','text'].includes(queField.content_type) && currentPage.page_columns > 1">
         <label v-if="currentPage.page_columns > 1" for="pwfb-editfield-column" class="mt-2 mb-1 block">Column Placement</label>
         <CustomField
@@ -313,10 +345,6 @@ function cancelEdit(){
           <button @click="editField" class="bg-green-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Edit Field</button>
           <button @click="queField=null" class="bg-red-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Cancel</button>
         </div>
-      </div>
-      <div class="p-2" v-if="!['field','text'].includes(queField.content_type) && currentPage.page_columns == 1">
-        Nothing to configure here...
-        <button @click="queField=null" class="bg-yellow-700 mt-3 text-white py-1 px-2 rounded-md block transition hover:scale-105 active:scale-95">Return to Builder</button>
       </div>
       <div class="p-3 rounded-b-lg" v-if="queField.content_type == 'field'">
         <label for="pwfb-editfield-type" class="mb-1 block">Type</label>
@@ -484,6 +512,43 @@ function cancelEdit(){
           </div>
           <button @click="queField.values.push({label:'',value:''})" class="bg-green-800 text-white p-1 rounded-md mt-1">Add Option</button>
         </div>
+
+        <div class="flex gap-2 items-center" v-if="queField.content_type == 'field' && queField.type == 'text'">
+          <CustomField
+            class="mt-1"
+            name="pwfb-editfield-index-name"
+            type="checkbox"
+            placeholder="Index as Name"
+            columns="1fr 1fr"
+            :value="form.declare.nameIndex == queField.id"
+            :values="[
+              {label:'Yes',value:true},
+              {label:'No',value:false}
+            ]"
+            @onResult="e=>form.declare.nameIndex = e ? queField.id : form.declare.nameIndex"
+          />
+          <label for="pwfb-editfield-required" class="mt-2 mb-1 block">Index field as Name field</label>
+        </div>
+
+        <div class="flex gap-2 items-center" v-if="queField.content_type == 'field' && queField.type == 'telephone'">
+          <CustomField
+            class="mt-1"
+            name="pwfb-editfield-index-phone"
+            type="checkbox"
+            placeholder="Index as Name"
+            columns="1fr 1fr"
+            :value="form.declare.phoneIndex == queField.id"
+            :values="[
+              {label:'Yes',value:true},
+              {label:'No',value:false}
+            ]"
+            @onResult="e=>form.declare.phoneIndex = e ? queField.id : form.declare.phoneIndex"
+          />
+          <label for="pwfb-editfield-required" class="mt-2 mb-1 block">Index field as Phone field</label>
+        </div>
+        
+        
+
         <div class="flex justify-end w-[max-content] ml-auto gap-1 mt-4">
           <button @click="editField" class="bg-green-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Edit Field</button>
           <button @click="queField=null" class="bg-red-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Cancel</button>
@@ -506,6 +571,7 @@ function cancelEdit(){
           :value="queField.styles"
           @onResult="e=>{queField.styles = e;}"
         />
+        
         <div class="flex justify-end w-[max-content] ml-auto gap-1 mt-4">
           <button @click="editField" class="bg-green-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Edit Field</button>
           <button @click="queField=null" class="bg-red-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Cancel</button>
@@ -559,6 +625,7 @@ function cancelEdit(){
           </div>
           <div>
             <button class="bg-blue-700 p-2 text-white rounded-md mr-2 hover:scale-105 active:scale-95 transition" @click="manageExtensionsMode = !manageExtensionsMode">Third-Party Credentials</button>
+            <button class="bg-teal-700 p-2 text-white rounded-md mr-2 hover:scale-105 active:scale-95 transition" @click="modifyConditionalEffects = !modifyConditionalEffects">Conditional Effects</button>
             <button class="bg-yellow-600 p-2 text-white rounded-md mr-2 hover:scale-105 active:scale-95 transition" @click="modifyCSS">Modify CSS</button>
             <button class="bg-green-600 p-2 text-white rounded-md mr-2 hover:scale-105 active:scale-95 transition" @click="saveChanges">Save Changes</button>
             <button class="bg-red-600 p-2 text-white rounded-md hover:scale-105 active:scale-95 transition" @click="cancelEdit">Cancel</button>
@@ -585,6 +652,7 @@ function cancelEdit(){
         />
         <h2 class="mb-2 mt-5 block font-bold text-gray-700 text-lg">Notifications</h2>
         <p class="mb-2">Check the email addresses where you want to receive a notification about a client's submission:</p>
+        <p v-if="emails.length == 0" class="italic">No emails added...</p>
         <div class="max-h-[200px] overflow-y-auto">
           <CustomField
             type="checkbox-group"
@@ -659,7 +727,7 @@ function cancelEdit(){
         </div> -->
         <div class="bg-white p-5 mb-5 text-gray-800" v-if="manageExtensionsMode">
           <h2 class="font-bold text-xl mb-2">Third-Party Credentials</h2>
-            <div class="grid" style="grid-template-columns: 1fr 370px;">
+            <div class="grid" style="grid-template-columns: 1fr 1fr 370px;">
               <div>
                 <label for="pwfbtpc-paypal" class="mb-1 block">PayPal Client ID</label>
                 <CustomField
@@ -667,6 +735,15 @@ function cancelEdit(){
                   placeholder="Paste your PayPal Client ID here"
                   :value="form.declare.paypalClientID"
                   @onResult="e=>form.declare.paypalClientID = e"
+                />
+              </div>
+              <div>
+                <label for="pwfbtpc-paypal" class="mb-1 block">PayPal Client ID</label>
+                <CustomField
+                  name="pwfbtpc-paypal"
+                  placeholder="Enter your Paypal Email"
+                  :value="form.declare.paypalEmail"
+                  @onResult="e=>form.declare.paypalEmail = e"
                 />
               </div>
               <div>
@@ -708,6 +785,13 @@ function cancelEdit(){
             
 
         </div>
+
+        <div class="bg-white p-5 mb-5 text-gray-800" v-if="modifyConditionalEffects"> 
+          <h2 class="font-bold text-xl ">Conditional Effects <small class="font-normal italic ">(for developers only, proceed with caution)</small></h2>
+          <p class="mb-2">This area is at its experimental stage and uses text-based ruling which may require you to learn its proper syntax.</p>
+          <ConditionScriptor :form="form" @onInterpret="e =>form.conditionals = e"/>
+        </div>
+
         <div class="bg-white p-5 mb-5" v-if="modifyCSSMode">
           <h2 class="font-bold text-xl mb-2">Custom CSS <small class="font-normal italic ">(for developers only, proceed with caution)</small></h2>
           <strong>Note:</strong> Modifying the CSS code below overrides <em class="font-bold text-slate-700 bg-slate-200">'Form Layout'</em> settings. Click <em class="font-bold text-slate-700 bg-slate-200">'Discard Custom CSS'</em> to restore default layout. Discarding custom CSS deletes code changes and cannot be undone

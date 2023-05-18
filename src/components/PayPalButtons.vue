@@ -1,10 +1,12 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch,defineEmits } from 'vue';
 import { Paypal, axios } from '../functions';
 
 let props = defineProps({
     service: {default:'',type:String},
     paid: {default:'',type:String},
+    paymentFunc:{type:Function},
+    paymentFuncParams:{type:Array},
     currency: {default:'USD',type:String},
     fieldData: {type:Object}
 });
@@ -14,21 +16,25 @@ let emit = defineEmits(['onPayment','onLoaded','onEmpty']);
 let serviceDetails = ref({})
 let fieldData = ref(null)
 let refreshPayPalDiv = ref(false)
+let lastPaidService = ''
 
 watch(()=>props.service,()=>{
     fetchServiceDetails()
 })
 
 function fetchServiceDetails(){
-    if(props.service == '' || props.service == null) return; 
+    if(props.service == '' || props.service == null || fieldData.value.options.paypal_value_basis == 'fixed') return;
+
     axios.post('services/fetch?book_services_name='+props.service).then(res=>{
         serviceDetails.value = res.data.result[0]
         console.log(fieldData.value.options.paypal_value)
         fieldData.value.options.paypal_value = serviceDetails.value.book_services_price
-        if([0,'',null].includes(fieldData.value.options.paypal_value)) {
+        console.log([0,'',null].includes(fieldData.value.options.paypal_value) && fieldData.value.options.paypal_value_basis != 'fixed')
+        if([0,'',null].includes(fieldData.value.options.paypal_value) && fieldData.value.options.paypal_value_basis != 'fixed') {
             emit('onEmpty')
             return
         }else{
+            console.log('test')
             emit('onLoaded')
         }
         refreshPayPal();
@@ -42,7 +48,10 @@ function refreshPayPal(){
         let payValue = fieldData.value.options.paypal_value
         
         Paypal.mountOn('#pwfv-paypalparent',payValue,props.currency).then(res=>{
-            emit('onPayment',JSON.parse(JSON.stringify(payValue)))
+            let params = props.paymentFuncParams
+            props.paymentFunc(params[0],params[1],payValue,params[2])
+        }).catch(err=>{
+            console.assert('Paypal Error:',err)
         })
     },10)
 }
