@@ -28,7 +28,7 @@
                 <h3 class="text-2xl mb-3">{{ c.dateNum }}</h3>
                 <div class="text-sm mb-2"  v-for="cs,i in c.scheds">
                     <strong class="block text-base">{{cs.service}}</strong>
-                    <p>{{ dateFormat('%h1:%M%a',new Date(cs.shift_date+' '+cs.shift_start).getTime()) }} - {{ dateFormat('%h1:%M%a',new Date(cs.shift_date+' '+cs.shift_end).getTime()) }}</p>
+                    <p>{{ dateFormat('%h1:%I%a',new Date(cs.shift_date+' '+cs.shift_start).getTime()) }} - {{ dateFormat('%h1:%I%a',new Date(cs.shift_date+' '+cs.shift_end).getTime()) }}</p>
                     <p v-if="cs.appointments.length == 0">(No entries)</p>
                     <p v-if="cs.appointments.length > 0">({{ cs.appointments.length }} {{ cs.appointments.length > 1? 'Entries' : 'Entry' }})</p>
                     <ul class="list-disc list-inside">
@@ -72,7 +72,7 @@
 
             <tr>
               <td class="font-bold text-gray-800 border-b p-1">Date Submitted</td>
-              <td class="border-b p-1">{{ dateFormat('%sm %d, %y (%h:%M %a)',modal.info.book_appointment_created_at) }}</td>
+              <td class="border-b p-1">{{ dateFormat('%sm %d, %y (%h:%I %a)',modal.info.book_appointment_created_at) }}</td>
             </tr>
           </table>
           <div class="flex justify-end my-5">

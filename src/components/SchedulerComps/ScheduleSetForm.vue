@@ -35,6 +35,24 @@
                     @on-result="e=>queSchedule.shift_date_end=e"
                 />
 
+                <label v-if="queSchedule.id != ''">Start Time</label>
+                <CustomFieldVue 
+                    v-if="queSchedule.id != ''"
+                    type="time"
+                    name="scheduler-form-timestart"
+                    :value="dateFormat('%H:%M','2022-01-01 '+queSchedule.shift_start)"
+                    @on-result="e=>queSchedule.shift_start = dateFormat('%H:%M','2022-01-01 '+e)"
+                />
+
+                <label v-if="queSchedule.id != ''">End Time</label>
+                <CustomFieldVue 
+                    v-if="queSchedule.id != ''"
+                    type="time"
+                    name="scheduler-form-timeend"
+                    :value="dateFormat('%H:%M','2022-01-01 '+queSchedule.shift_end)"
+                    @on-result="e=>queSchedule.shift_end = dateFormat('%H:%M','2022-01-01 '+e)"
+                />
+
                 <label v-if="queSchedule.id == ''">Repeat Days</label>
                 <CustomFieldVue 
                     v-if="queSchedule.id == ''"
@@ -111,22 +129,22 @@
                     <label class="mb-1 block">Time Slots</label>
                     <div class="max-h-[100px] overflow-y-auto pr-2">
                         <div class="grid gap-1 items-center mb-1" :style="{
-                                'grid-template-columns': (queSchedule.timeSlots.length > 1) ? '1fr 1fr 30px' : '1fr 1fr'
-                            }" v-for="ts,i in queSchedule.timeSlots">
+                                'grid-template-columns': (timeSlots.length > 1) ? '1fr 1fr 30px' : '1fr 1fr'
+                            }" v-for="ts,i in timeSlots">
                             <CustomFieldVue 
                                 type="time"
                                 name="scheduler-form-timestart"
-                                :value="dateFormat('%H:%M','2022-01-01 '+queSchedule.timeSlots[i].time_start)"
-                                @on-result="e=>queSchedule.timeSlots[i].time_start=e"
+                                :value="dateFormat('%H:%M','2022-01-01 '+timeSlots[i].time_start)"
+                                 @on-result="e=>timeSlots[i].time_start=e"
                             />
                             <CustomFieldVue 
                                 type="time"
                                 name="scheduler-form-timestart"
-                                :value="dateFormat('%H:%M','2022-01-01 '+queSchedule.timeSlots[i].time_end)"
-                                @on-result="e=>queSchedule.timeSlots[i].time_end=e"
+                                :value="dateFormat('%H:%M','2022-01-01 '+timeSlots[i].time_end)"
+                                 @on-result="e=>timeSlots[i].time_end=e"
                             />
                             <div>
-                                <button class="basic danger bg-red-500 text-white p-1 flex justify-center items-center w-[30px] h-[30px]" v-if="queSchedule.timeSlots.length > 1" @click="queSchedule.timeSlots.splice(i,1)">
+                                <button class="basic danger bg-red-500 text-white p-1 flex justify-center items-center w-[30px] h-[30px]" v-if="timeSlots.length > 1" @click="timeSlots.splice(i,1)">
                                     <i v-html="icons.trash"></i>
                                 </button>
                             </div>
@@ -136,7 +154,7 @@
                             
                         </div>
                     </div>
-                    <button class="basic mt-2 block bg-green-700 text-white p-1" @click="queSchedule.timeSlots.push({time_start:'',time_end:''})">Add Time Slot</button>
+                    <button class="basic mt-2 block bg-green-700 text-white p-1" @click="timeSlots.push({time_start:'',time_end:''})">Add Time Slot</button>
                 </div>
             </div>
             <p class="errormsg" v-if="errormsg != ''" v-html="errormsg"></p>
@@ -175,6 +193,7 @@ export default{
                 duration:2000,
                 show:false
             },
+            timeSlots: [{time_start:'00:00:00',time_end:'01:00:00'}],
             queSchedule:{
                 id:'',
                 shift_date: '',
@@ -220,6 +239,7 @@ export default{
     },
     methods:{
         resetQueSched(){
+            this.timeSlots  = [{time_start:'00:00:00',time_end:'01:00:00'}]
             this.queSchedule={
                 id:'',
                 shift_date: '',
@@ -335,38 +355,43 @@ export default{
                 this.errormsg = '<strong>End Date</strong> must be set later than the Start Date';
                 return;
             }
-            let timeSlotsHasEmptyVals = false
-            this.queSchedule.timeSlots.forEach(el=>{
-                if(el.time_start.match(/^([0-9]{2}:[0-9]{2}:[0-9]{2})|([0-9]{2}:[0-9]{2})$/g) == null 
-                || el.time_end.match(/^([0-9]{2}:[0-9]{2}:[0-9]{2})|([0-9]{2}:[0-9]{2})$/g) == null) timeSlotsHasEmptyVals = true 
-            })
 
-            if(timeSlotsHasEmptyVals) {
-                this.errormsg = '<strong>Time Slots</strong> have empty values';
-                return;
+            this.queSchedule.timeSlots = JSON.parse(JSON.stringify(this.timeSlots))
+
+            if(this.queSchedule.id == ''){
+                let timeSlotsHasEmptyVals = false
+                this.queSchedule.timeSlots.forEach(el=>{
+                    if(el.time_start.match(/^([0-9]{2}:[0-9]{2}:[0-9]{2})|([0-9]{2}:[0-9]{2})$/g) == null 
+                    || el.time_end.match(/^([0-9]{2}:[0-9]{2}:[0-9]{2})|([0-9]{2}:[0-9]{2})$/g) == null) timeSlotsHasEmptyVals = true 
+                })
+
+                if(timeSlotsHasEmptyVals) {
+                    this.errormsg = '<strong>Time Slots</strong> have empty values';
+                    return;
+                }
+
+                function sortTimeSlots(times) {
+                        // Custom sorting function
+                    const customSort = (a, b) => {
+                        // Handle null values
+                        if (a.time_start === '' || a.time_end === '') return 1; // Place null values at the end
+                        if (b.time_start === '' || b.time_end === '') return -1; // Place null values at the end
+                        // Compare time values
+                        let returnResult = 0;
+                        if (new Date('2023-01-01 '+a.time_start).getTime() < new Date('2023-01-01 '+b.time_start).getTime()) returnResult = -1;
+                        if (new Date('2023-01-01 '+a.time_start).getTime() > new Date('2023-01-01 '+b.time_start).getTime()) returnResult = 1;
+                        return returnResult;
+                    };
+
+                    // Sort the array using the custom sorting function
+                    const sortedTimes = times.sort(customSort);
+
+                    return sortedTimes;
+                }
+
+                this.queSchedule.timeSlots = sortTimeSlots(JSON.parse(JSON.stringify(this.queSchedule.timeSlots)))
             }
-
-            function sortTimeSlots(times) {
-                    // Custom sorting function
-                const customSort = (a, b) => {
-                    // Handle null values
-                    if (a.time_start === '' || a.time_end === '') return 1; // Place null values at the end
-                    if (b.time_start === '' || b.time_end === '') return -1; // Place null values at the end
-                    // Compare time values
-                    let returnResult = 0;
-                    if (new Date('2023-01-01 '+a.time_start).getTime() < new Date('2023-01-01 '+b.time_start).getTime()) returnResult = -1;
-                    if (new Date('2023-01-01 '+a.time_start).getTime() > new Date('2023-01-01 '+b.time_start).getTime()) returnResult = 1;
-                    return returnResult;
-                };
-
-                // Sort the array using the custom sorting function
-                const sortedTimes = times.sort(customSort);
-
-                return sortedTimes;
-            }
-
-            this.queSchedule.timeSlots = sortTimeSlots(JSON.parse(JSON.stringify(this.queSchedule.timeSlots)))
-
+            
             if(this.queSchedule.id == '')
                 this.$emit('onCreate',JSON.parse(JSON.stringify(this.queSchedule)));
             else
@@ -376,13 +401,13 @@ export default{
         }
     },
     watch:{
-        'queSchedule.timeSlots':{
+        timeSlots:{
             handler(){
-                if(this.queSchedule.timeSlots == null || this.queSchedule.timeSlots.length == 0) return
+                if(this.timeSlots == null || this.timeSlots.length == 0) return
                 let earliestTimeStart = ''
                 let latestTimeEnd = '2020-01-01 00:00:00'
                 
-                this.queSchedule.timeSlots.forEach(el=>{
+                this.timeSlots.forEach(el=>{
                     if(el.time_start == '') return
                     
                     
