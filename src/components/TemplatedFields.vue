@@ -8,22 +8,22 @@
             <input :id="name" type="checkbox" hidden :checked="valueC == true" @change="$event=>valueC = $event.target.checked">
         </label>
         
-        <div class="pwfvf-checkbox-group" :style="{'grid-template-columns':columns}" v-if="type == 'checkbox-group'">
+        <div class="pwfvf-checkbox-group" :style="{'grid-template-columns':columns}" v-if="type == 'checkbox-group'" :class="{'pwcf-readonly':readonly}">
             <label v-for="v,i in values" :key="i" :for="name+'_'+i" :class="{active:selectC != null && selectC.includes(v.value)}">{{v.label}}
                 <input style="display:none" :readonly="readonly" type="checkbox" :id="name+'_'+i" :name="name+'_'+i" @change="checkThis(v.value,$event);" :checked="selectC != null && selectC.includes(v.value)">
             </label>
         </div>
-        <div class="pwfvf-radio-group" v-if="type == 'radio-group'" :style="{'grid-template-columns':columns}">
+        <div class="pwfvf-radio-group" v-if="type == 'radio-group'" :style="{'grid-template-columns':columns}" :class="{'pwcf-readonly':readonly}">
             <label v-for="v,i in values" :key="i" :for="name+'_'+i" :class="{active:valueC == v.value}">
                 {{v.label}}
                 <input style="display:none" :readonly="readonly" :id="name+'_'+i" type="radio" :name="name" :checked="valueC == v.value" @change="valueC = v.value;">
             </label>
         </div>
         
-        <div class="pwfvf-select" :class="'pwfvf-select-'+name"  v-if="type == 'select'" @click="closeAllOpenSelects" :data-pwfvf="name">
+        <div class="pwfvf-select" :class="'pwfvf-select-'+name"  v-if="type == 'select'" @click="closeAllOpenSelects" :data-pwfvf="name" >
             <span v-html="selectedValue"></span>
             <i class="pwfvf-select-caret-down">&#9660;</i>
-            <div class="pwfvf-select-menu">
+            <div class="pwfvf-select-menu" :class="{'pwcf-readonly':readonly}">
                 <div :class="{active:valueC == v.value}" class="pwfvf-select-option" v-for="v,i in values" :key="i" @click="loaded=true;valueC = v.value;selectedValue = v.label" v-html="v.label">
                     
                 </div>
@@ -177,5 +177,7 @@ export default({
 </script>
 
 <style scoped>
-
+.pwcf-readonly{
+    pointer-events: none;
+}
 </style>

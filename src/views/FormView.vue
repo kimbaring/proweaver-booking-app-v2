@@ -1,6 +1,6 @@
 <script setup>
 import {onMounted, ref,watch,computed} from 'vue'
-import {axios} from '../functions'
+import {axios,waitForCondition} from '../functions'
 import TemplatedFields from '../components/TemplatedFields.vue'
 import {formData,formCSS} from '../defaults'
 import icons,{iconsSolid} from '../assets/icons'
@@ -57,15 +57,14 @@ let pageColumnResponsive = ref(1);
 let formSubmitted = ref(false);
 let paypalLoaded = ref(false)  
 let refreshPayPal = ref(false)
-let currentPageFieldIds = ref([]);
-let selectedScheduleService = ref('');
-let formId = -1;
 let userReceiver = ''
+let selectedServiceFromScheduler = ref(null)
 let indexFieldVals = ref({
     name:'',
     phone:''
 })
 let initialVals = ref({})
+let propsToModify = ref({})
 
 let allFields = computed(()=>{
     let pageFields = {}
@@ -74,87 +73,84 @@ let allFields = computed(()=>{
     return pageFields
 })
 
+
+let allRequiredFields = computed(()=>{
+    let pageFields = {}
+    if(form.value == null) return
+    form.value.pages.forEach(el2=>{
+        el2.page_fields.forEach(el=>{
+            if(el.content_type == 'text') return
+            if(omittedRBFields.value.includes(el.id)) return
+            if(el.required || (el.content_type == 'rbfield' && !omittedRBFields.value.includes(el.id)) || el.content_type == 'scheduler' || el.hidden === false){
+                pageFields[el.id] = ['rbfield','scheduler'].includes(el.content_type) ? el.text : el.label
+            }
+        })
+    })
+    return pageFields
+})
+
 const currentPage = computed(()=>{
     pageColumnResponsive.value = form.value.pages[currentPageIndex.value].page_columns;
     return form.value.pages[currentPageIndex.value]
 });
 
+let currentRequiredFields = computed(()=>{
+    let pageFields = {}
+    if(form.value == null) return
+    currentPage.value.page_fields.forEach(el=>{
+        if(el.content_type == 'text') return
+        if(omittedRBFields.value.includes(el.id)) return
+        if(el.required || (el.content_type == 'rbfield' && !omittedRBFields.value.includes(el.id)) || el.content_type == 'scheduler' || el.hidden === false){
+            pageFields[el.id] = ['rbfield','scheduler'].includes(el.content_type) ? el.text : el.label
+        }
+    })
+    return pageFields
+})
+
+
+
+
 
 watch(()=>currentPageIndex.value,()=>{
-    currentPageRequired.value = []
     currentPageRequiredLabels.value = [];
-    omittedRBFields.value = [];
     setCurrentPageRequired();
 })
+
+
 
 function setCurrentPageRequired(){
     currentPage.value.page_fields.forEach((el,i)=>{
         if(el.content_type=='rbfield' || el.content_type == 'scheduler' || el.required){
-            if(el.content_type=='rbfield') currentPageRequired.value.push(`pwp${currentPageIndex.value}_pwo${i}_pwid=${el.endpoint.split('/')[0]}`)
-            else if(el.content_type=='scheduler') currentPageRequired.value.push(`pwp${currentPageIndex.value}_pwo${i}_pwid=scheduler`)
-            else if(el.content_type=='field') currentPageRequired.value.push(`pwp${currentPageIndex.value}_pwo${i}_${el.name}`)
-
-            if(el.content_type=='rbfield' || el.content_type=='scheduler') currentPageRequiredLabels.value.push(el.text);
-            else if(el.content_type=='field') currentPageRequiredLabels.value.push(el.label);
+            currentPageRequired.value.push(el.id)
+            if(el.content_type=='rbfield' || el.content_type == 'scheduler') currentPageRequiredLabels.value.push(el.text)
+            else currentPageRequiredLabels.value.push(el.label)
+            requiredFields.value.push({
+                id: el.id,
+                label: el.label ?? el.text
+            })
         }
-
-        // if(['',null,undefined].includes(el.lid)){
-        //     if(el.content_type=='rbfield') currentPage.value.page_fields[i].lid = `pwlid=${(Math.floor(Math.random() * 10000000) + 1).toString(32)}_pwid=${el.endpoint.split('/')[0]}`
-        //     else if(el.content_type=='scheduler') currentPage.value.page_fields[i].lid = `pwlid=${(Math.floor(Math.random() * 10000000) + 1).toString(32)}_pwid=scheduler`
-        //     else if(el.content_type=='field') currentPage.value.page_fields[i].lid = `pwlid=${(Math.floor(Math.random() * 10000000) + 1).toString(32)}_${el.name}`
-        // }
-
-        if(el.content_type=='rbfield') currentPageFieldIds.value.push(`pwp${currentPageIndex.value}_pwo${i}_pwid=${el.endpoint.split('/')[0]}`)
-        else if(el.content_type=='scheduler') currentPageFieldIds.value.push(`pwp${currentPageIndex.value}_pwo${i}_pwid=scheduler`)
-        else if(el.content_type=='field') currentPageFieldIds.value.push(`pwp${currentPageIndex.value}_pwo${i}_${el.name}`)
-
-        if(el.content_type=='rbfield') 
-            if(requiredFields.value.findIndex(el2=>el2.id == `pwp${currentPageIndex.value}_pwo${i}_pwid=${el.endpoint.split('/')[0]}`) == -1)
-                requiredFields.value.push({id:`pwp${currentPageIndex.value}_pwo${i}_pwid=${el.endpoint.split('/')[0]}`,label:el.text})
-        if(el.content_type=='scheduler') 
-            if(requiredFields.value.findIndex(el2=>el2.id == `pwp${currentPageIndex.value}_pwo${i}_pwid=scheduler`) == -1) 
-                requiredFields.value.push({id:`pwp${currentPageIndex.value}_pwo${i}_pwid=scheduler`,label:el.text})
-        if(el.content_type=='field')
-            if(requiredFields.value.findIndex(el2=>el2.id == `pwp${currentPageIndex.value}_pwo${i}_${el.name}`) == -1)
-                requiredFields.value.push({id:`pwp${currentPageIndex.value}_pwo${i}_${el.name}`,label:el.label})
     });
 }
 
 function selectedService(e){
-    selectedScheduleService.value = e
-    let order = -1;
-
-    form.value.pages.forEach((el2,i2)=>{
-        el2.page_fields.forEach((el,i)=>{
-            if(el.content_type == 'rbfield' && el.endpoint.split('/')[0] == 'services'){
-                let index = userInput.value.findIndex(el=>el.id == `pwp${i2}_pwo${i}_pwid=services`)
-                if(index == -1){
-                    userInput.value.push({
-                        id:`pwp${i2}_pwo${i}_pwid=services`,
-                        label: el.text,
-                        value: selectedScheduleService.value
-                    })
-                }else{
-                    userInput.value[index] = {
-                        id:`pwp${i2}_pwo${i}_pwid=services`,
-                        label: el.text,
-                        value: selectedScheduleService.value
-                    }
-                }
-
-                if(currentPageIndex.value == i2) order = i
-            }
+    let index = userInput.value.findIndex(el=>el.id == 'default_services');
+    allFields.value.default_services.value = e
+    selectedServiceFromScheduler.value = e
+    if(index == -1){
+        userInput.value.push({
+            id:'default_services',
+            label: allFields.value.default_services.label,
+            value: e
         })
-    })
+        return;
+    }
 
-    if(order == -1) return;
-    let temp = JSON.parse(JSON.stringify(currentPage.value.page_fields[order]));
-    currentPage.value.page_fields[order] = {
-        column: 1
-    };
-    setTimeout(() => {
-        currentPage.value.page_fields[order] = temp
-    }, 10);
+    userInput.value[index] = {
+        id:'default_services',
+        label: allFields.value.default_services.label,
+        value: e
+    }
+
 }
 
 function paidPaypal(id,fieldLabel,fieldValue,f){
@@ -186,7 +182,6 @@ function checkGetter(){
         return;
     }
     let id = getparams.get('form_id');
-    formId = id;
     axios.post('forms/fetch?book_form_id='+id).then(res=>{
         if(res.data == null || !res.data.success) return;
         form.value = JSON.parse(res.data.result[0].book_form_json)
@@ -225,55 +220,137 @@ function filteredByColumn(col){
     else return currentPage.value.page_fields.filter(el=>el.column == col) 
 }
 
-function getId(id){
-    let index = currentPageFieldIds.value.findIndex(el=>el.includes(id))
-    return currentPageFieldIds.value[index]
-}
 
 function deleteRBField(id){
-    let index = currentPageRequired.value.findIndex(el=>el.includes(id))
-    let deletedId = currentPageRequired.value[index];
-    requiredFields.value.splice(requiredFields.value.findIndex(el=>el.id.includes(id)), 1)
-    currentPageRequired.value.splice(index,1);
-    currentPageRequiredLabels.value.splice(index,1);
-    omittedRBFields.value.push(deletedId)
+    allFields.value[id].required = false
+    omittedRBFields.value.push(id)
 }
 
 function deletePaypalAsPayment(f){
-    let index = currentPageRequired.value.findIndex(el=>el.includes(f.name))
-    requiredFields.value.splice(requiredFields.value.findIndex(el=>el.id.includes(f.name)), 1)
-    currentPageRequired.value.splice(index,1);
-    currentPageRequiredLabels.value.splice(index,1);
+    allFields.value[f.id].required = false
 }
 
 function addPaypalAsPayment(f){
-    let i = currentPage.value.page_fields.findIndex(el=> el.name == f.name)
-    if(requiredFields.value.findIndex(el=>el.id==`pwp${currentPageIndex.value}_pwo${i}_${f.name}`)) return;
-    requiredFields.value.push({id:`pwp${currentPageIndex.value}_pwo${i}_${f.name}`,label:f.label})
-    currentPageRequired.value.push(`pwp${currentPageIndex.value}_pwo${i}_${f.name}`)
-    currentPageRequiredLabels.value.push(f.label);
+    allFields.value[f.id].required = true
 }
 
-function getFieldValue(id){
-    let index = userInput.value.findIndex(el=>el.id.includes(id));
-    if(index == -1) return null;
-    return userInput.value[index].value
+function getFieldValue(fId){
+    return allFields.value[fId].value
 }
 
-function organizeInput(id,fieldLabel,fieldValue,f){
-    let fieldId = currentPageFieldIds.value[currentPageFieldIds.value.findIndex(el=>el.includes(id))];
-    let index = userInput.value.findIndex(el=>el.id.includes(fieldId));
+function organizeInput(f,e){
+    
+    let index = userInput.value.findIndex(el=>el.id == f.id);
 
-    f.value = fieldValue
+    if(f.id == 'default_services') {
+        selectedServiceFromScheduler.value = e;
+        return
+    }
+    f.value = e
+
+    if(form.value.declare.nameIndex == f.id){
+        indexFieldVals.value.name = e
+    }else if(form.value.declare.phoneIndex == f.id){
+        indexFieldVals.value.phone = e
+    }
+
+    if(f.content_type == 'field' && f.type == 'email' && (f.useemail === 'true' || f.useemail === true) && !['',null].includes(e)){
+        userReceiver = e;
+    }
+
+    
+    if(index == -1){
+        userInput.value.push({
+            id:f.id,
+            label: (f.content_type == 'field') ? f.label : f.text,
+            value: e
+        })
+    }else{
+        userInput.value[index] = {
+            id:f.id,
+            label: (f.content_type == 'field') ? f.label : f.text,
+            value: e
+        }
+    }
+
+    
 
     // conditional effects
-    let textRules = form.value.conditionals.split(';;')
+    let textRules = form.value.conditionals.split(' :break;')
 
-    textRules.forEach(el=>{
+    textRules.forEach(async el=>{
         el = el.trim()  
         if(el == '' || el.match(/^\s+$/g)) return
-        let condition = parseConditions(substituteFieldPlaceholders(el.split('?')[0].trim()))
-        let effect = tokenizeEffects(el.split('?')[1].trim().split(';').map(effel=>effel.trim()))
+        let condition = parseConditions(await substituteFieldPlaceholders(el.split('?')[0].trim()))
+        let effect = tokenizeEffects(el.split('?')[1].trim().split(' :;').map(effel=>effel.trim()))
+
+        // console.log(evaluateConditions(condition),condition)
+        if(el.split('?')[0].trim().includes(f.id)) 
+            effectsToggler(el.split('?')[0].trim(),effect,evaluateConditions(condition))
+    })
+
+    setTimeout(()=>{
+        const objPTM = JSON.parse(JSON.stringify(propsToModify.value))
+        for(let ptm in objPTM){
+            for(let ptmp in objPTM[ptm]){
+                if(ptmp == 'value'){
+                    let index = userInput.value.findIndex(el=>el.id == ptm);
+                    if(index == -1){
+                        userInput.value.push({
+                            id:ptm,
+                            label: (allFields.value[ptm].content_type == 'field') ? allFields.value[ptm].label : allFields.value[ptm].text,
+                            value: objPTM[ptm][ptmp]
+                        })
+                    }else{
+                        userInput.value[index] = {
+                            id: ptm,
+                            label: (allFields.value[ptm].content_type == 'field') ? allFields.value[ptm].label : allFields.value[ptm].text,
+                            value: objPTM[ptm][ptmp]
+                        }
+                    }
+                }
+                allFields.value[ptm][ptmp] = objPTM[ptm][ptmp]
+            }
+        }
+    },10)
+
+    propsToModify.value = {}
+            
+
+    
+    // end of conditional effects
+
+}
+
+
+onMounted(async ()=>{
+    checkGetter()
+    if(props.page != 0) currentPageIndex.value = props.page;
+
+    await waitForCondition(()=>allFields.value != null)
+    await waitForCondition(()=>Object.keys(allFields.value).length != 0)
+
+    // conditional effects
+    let textRules = form.value.conditionals.split(' :break;')
+
+    textRules.forEach(async el=>{
+        el = el.trim()  
+        if(el == '' || el.match(/^\s+$/g)) return
+        let condition = parseConditions(await substituteFieldPlaceholders(el.split('?')[0].trim()))
+        let effect = tokenizeEffects(el.split('?')[1].trim().split(' :;').map(effel=>effel.trim()))
+
+        let condText = el.split('?')[0].trim();
+
+        if(initialVals.value[condText] == null){
+            initialVals.value[condText] = {}
+            effect.forEach(el=>{
+                if(initialVals.value[condText][el.field] == null){
+                    initialVals.value[condText][el.field] = {}
+                }
+
+                initialVals.value[condText][el.field][el.prop] = allFields.value[el.field][el.prop]
+            })
+        }
 
         // console.log(evaluateConditions(condition),condition)
         effectsToggler(el.split('?')[0].trim(),effect,evaluateConditions(condition))
@@ -282,67 +359,41 @@ function organizeInput(id,fieldLabel,fieldValue,f){
     // end of conditional effects
 
 
-    if(form.value.declare.nameIndex == f.id){
-        indexFieldVals.value.name = fieldValue
-    }else if(form.value.declare.phoneIndex == f.id){
-        indexFieldVals.value.phone = fieldValue
-    }
-
-
-    if(f.content_type == 'field' && f.type == 'email' && (f.useemail === 'true' || f.useemail === true) && !['',null].includes(fieldValue)){
-        userReceiver = fieldValue;
-
-        console.log(userReceiver)
-    }
-
-    
-    if(index == -1){
-        userInput.value.push({
-            id:fieldId,
-            label: fieldLabel,
-            value: fieldValue
-        })
-        return;
-    }
-
-    userInput.value[index] = {
-        id:fieldId,
-        label: fieldLabel,
-        value: fieldValue
-    }
-}
-
-
-onMounted(()=>{
-    checkGetter()
-    if(props.page != 0) currentPageIndex.value = props.page;
     return;
 })
 
 
 function beforePageChange(add,jumpTo=null){
     currentPageRequiredInvalids.value = [];
-    if(currentPageRequired.value.length > 0 && (add >= 1 || (jumpTo != null && jumpTo > currentPageIndex.value)) ){
-        currentPageRequired.value.forEach((el,i)=>{
-            let index = userInput.value.findIndex(el2=>{
-                if(typeof el2.value == 'object' && el2.id == el){
-                    el2.value = JSON.parse(JSON.stringify(el2.value));  
-                    if(el2.value == null || el2.value.length == 0) return false;
-                    else return true;
-                } 
-                return el2.id == el && !['',null,[]].includes(el2.value)
-            });
-            if(index == -1) {
+    if(Object.keys(currentRequiredFields.value).length > 0 && (add >= 1 || (jumpTo != null && jumpTo > currentPageIndex.value)) ){
+        for(let crf in currentRequiredFields.value){
+            let field = allFields.value[crf]
+            
+            if(typeof field.value == 'checkbox-group'){
+                field.value = JSON.parse(JSON.stringify(field.value));  
+                if(field.value == null || field.value.length == 0) {
+                    currentPageRequiredInvalids.value.push({
+                        id: field.id,
+                        label: (field.content_type == 'field') ? field.label : field.text
+                    }) 
+                }
+
+                continue
+            } 
+
+            if(['',null,[],undefined].includes(field.value)){
                 currentPageRequiredInvalids.value.push({
-                    id: el,
-                    label: currentPageRequiredLabels.value[i]
+                    id: field.id,
+                    label: (field.content_type == 'field') ? field.label : field.text
                 })
             }
-                
-        })
-        if(currentPageRequiredInvalids.value.length > 0) return;
+        }
     }
-    
+
+    if(currentPageRequiredInvalids.value.length){
+        return
+    }
+
     if(jumpTo != null){
         if(jumpTo > progressIndex.value+1) return;
         currentPageIndex.value = jumpTo;
@@ -356,29 +407,26 @@ function beforePageChange(add,jumpTo=null){
 }
 
 function submit(){
-    currentPageRequiredInvalids.value = [];
+    currentPageRequiredInvalids.value = []
+    for(let crf in allRequiredFields.value){
+        let field = allFields.value[crf]
+        
+        if(typeof field.value == 'checkbox-group'){
+            field.value = JSON.parse(JSON.stringify(field.value));  
+            if(field.value == null || field.value.length == 0) return false;
+            else return true;
+        } 
 
-    requiredFields.value.forEach(el=>{
-        let index = userInput.value.findIndex(el2=>{
-            if(el2.id == el.id && el2.value != null && typeof el2.value == 'object') return el2.value.length > 0;
-            return el2.id == el.id && !['',null,[]].includes(el2.value)
-        });
-        if(index == -1) 
+        if(['',null,[],undefined].includes(field.value)){
             currentPageRequiredInvalids.value.push({
-                id: el.id,
-                label: el.label
+                id: field.id,
+                label: (field.content_type == 'field') ? field.label : field.text
             })
-    })
+        }
+    }
+
     if(currentPageRequiredInvalids.value.length > 0) return;
-    let locationIndex = userInput.value.findIndex(el=>el.id.includes('pwid=location'))
-    let workerIndex = userInput.value.findIndex(el=>el.id.includes('pwid=worker'))
-    let servicesIndex = userInput.value.findIndex(el=>el.id.includes('pwid=services'))
-    let scheduleIndex = userInput.value.findIndex(el=>el.id.includes('pwid=scheduler'))
-    let location = userInput.value[locationIndex] ?? '';
-    let worker = userInput.value[workerIndex] ?? '';
-    let services = userInput.value[servicesIndex] ?? '';
-    let schedule = userInput.value[scheduleIndex] ?? '';
-    
+
     if(grecaptcha.getResponse().length == 0){
         alert('Please complete the reCAPTCHA!')
         return;
@@ -522,33 +570,40 @@ function evaluateConditions(parsed) {
         }
 
         let result;
-        switch (operator) {
-        case '!=':
-            result = leftValue != rightValue;
-            break;
-        case '>':
-            result = leftValue > rightValue;
-            break;
-        case '<':
-            result = leftValue < rightValue;
-            break;
-        case '>=':
-            result = leftValue >= rightValue;
-            break;
-        case '<=':
-            result = leftValue <= rightValue;
-            break;
-        case '==':
-            result = leftValue == rightValue;
-            break;  
-        case 'in_array':
-            let val = leftOperand
-            if(typeof leftOperand != 'string') val = String(val)
-            result = rightValue.includes(val)
-            break;
-        default:
-            result = false;
+
+        if(leftOperand != ''){
+            switch (operator) {
+                case '!=':
+                    result = leftValue != rightValue;
+                    break;
+                case '>':
+                    result = leftValue > rightValue;
+                    break;
+                case '<':
+                    result = leftValue < rightValue;
+                    break;
+                case '>=':
+                    result = leftValue >= rightValue;
+                    break;
+                case '<=':
+                    result = leftValue <= rightValue;
+                    break;
+                case '==':
+                    result = leftValue == rightValue;
+                    break;  
+                case 'in_array':
+                    let val = leftOperand
+                    if(typeof leftOperand != 'string') val = String(val)
+                    result = rightValue.includes(val)
+                    break;
+                default:
+                    result = false;
+                    break;
+            }
+        }else{
+            result = false
         }
+        
         
         if(lastResult != null){
             if(logicalOperators[logOptIndex] == ' || ')
@@ -565,15 +620,63 @@ function evaluateConditions(parsed) {
 
 }
 
-function substituteFieldPlaceholders(text){
-    return text.replace(/\[(\w+)\]/g, (match, id) => allFields.value[id].value);
+async function substituteFieldPlaceholders(text){
+    return new Promise(res=>{
+        setTimeout(()=>{
+            res(text.replace(/\[(\w+)\]/g, (match, id) => allFields.value[id].value))
+        },10)
+    })
 }
 
 function tokenizeEffects(effectsArray) {
-  function tokenizeString(inputString) {
-    const regex = /\s+|\[([^[\]]+)\]|([.=])/g;
-    return inputString.split(regex).filter(token => token != null).filter(token => token.trim() !== '');
+    function customEffectsSplitter(text) {
+  const delimiters = ['='];
+  let currentToken = '';
+  const tokens = [];
+
+  for (let i = 0; i < text.length; i++) {
+    const currentChar = text[i];
+
+    if (tokens.length === 0) {
+      if (currentToken.match(/\[[a-zA-Z0-9.\-_]+\]/g)) {
+        tokens.push(currentToken);
+        currentToken = '';
+      } else {
+        currentToken += currentChar;
+      }
+    } else {
+      if (delimiters.includes(currentChar)) {
+        if (currentToken !== '') {
+          tokens.push(currentToken.trim());
+          currentToken = '';
+        }
+        tokens.push(currentChar);
+      } else {
+        currentToken += currentChar;
+      }
+    }
   }
+
+  if (currentToken !== '') {
+    tokens.push(currentToken.trim());
+    currentToken = '';
+  }
+
+  const remainingText = text.slice(tokens.join('').length).trim();
+  if (remainingText !== '') {
+    tokens.push(remainingText);
+  }
+
+  return tokens;
+}
+
+
+
+
+    function tokenizeString(inputString) {
+        const regex = /\s+|\[([^[\]]+)\](?=\s|$)|([.=])(?=\s|$)|"([^"]*)"(?=\s|$)/g
+        return customEffectsSplitter(inputString).filter((token) => token.trim() !== '');
+    }
 
   let effects = [];
   effectsArray.forEach(el => {
@@ -581,15 +684,16 @@ function tokenizeEffects(effectsArray) {
     let field = tokenized[0].startsWith('[') && tokenized[0].endsWith(']')
       ? tokenized[0].slice(1, -1)
       : tokenized[0];
-
+      
     effects.push({
       field: field,
-      prop: tokenized[2],
-      value: tokenized[4],
+      prop: tokenized[1].trim(),
+      value: tokenized[3].trim(), // Remove the quotes around the value
     });
   });
   return effects;
 }
+
 
 function parseValue(value){
     if(value == null || value == undefined) return value
@@ -607,69 +711,43 @@ function parseValue(value){
 }
 
 function effectsToggler(conditionText,effects,evaluation){
-    if(initialVals.value[conditionText] == null){
-        initialVals.value[conditionText] = {}
-        effects.forEach(el=>{
-            if(initialVals.value[conditionText][el.field] == null){
-                initialVals.value[conditionText][el.field] = {}
-            }
-
-            initialVals.value[conditionText][el.field][el.prop] = allFields.value[el.field][el.prop]
-        })
-    }
-
+    
     if(evaluation){
         effects.forEach(el=>{
-            allFields.value[el.field][el.prop] = parseValue(el.value)
 
+            if(propsToModify.value[el.field] == null)
+                propsToModify.value[el.field] = {}
+    
             if(el.prop == 'required' || el.prop == 'hidden'){
                 if(el.prop == 'hidden' && parseValue(el.value) == false) return
                 if(el.prop == 'required' && parseValue(el.value) == true) return
-                let id = allFields.value[el.field].content_type == 'field' ? 
-                    allFields.value[el.field].name : allFields.value[el.field].text
-
-                let index = currentPageRequired.value.findIndex(el=>el.includes(id))
-                requiredFields.value.splice(requiredFields.value.findIndex(el=>el.id.includes(id)), 1)
-                currentPageRequired.value.splice(index,1);
-                currentPageRequiredLabels.value.splice(index,1);
             }
+
+            propsToModify.value[el.field][el.prop] = parseValue(el.value)
+
+            
         })
 
         
     }else{
         for(let field in initialVals.value[conditionText]){
-            initialVals.value[conditionText][field]
             for(let prop in initialVals.value[conditionText][field]){
-                allFields.value[field][prop] = initialVals.value[conditionText][field][prop]
-                let el = {
-                    prop,
-                    value: initialVals.value[conditionText][field][prop]
-                }
-                
-                if(el.prop == 'required' || el.prop == 'hidden'){
-                    if(el.prop == 'hidden' && parseValue(el.value) == false) return
-                    if(el.prop == 'required' && parseValue(el.value) == true) return
-                    let id = allFields.value[field].content_type == 'field' ? 
-                        allFields.value[field].name : allFields.value[field].text
+                if(propsToModify.value[field] == null)
+                    propsToModify.value[field] = {}
 
-                    let index = currentPageRequired.value.findIndex(el=>el.includes(id))
-                    requiredFields.value.splice(requiredFields.value.findIndex(el=>el.id.includes(id)), 1)
-                    currentPageRequired.value.splice(index,1);
-                    currentPageRequiredLabels.value.splice(index,1);
-                }
+                if(allFields.value[field][prop] != initialVals.value[conditionText][field][prop]) return
+
+                if(propsToModify.value[field][prop] == null)
+                    propsToModify.value[field][prop] = initialVals.value[conditionText][field][prop]
+                
             }
         }
     }
-
-    
-
-    
-   
-    // initialVals.value[conditionText] = 
 }
 
 </script>
 <template>
+    {{ allFields != null? Object.values(allFields).map(el=>el.value) : '' }}
    <div id="pwfv-parent" ref="formElement" v-if="form != null" data-responsive="">
         <div class="pwfv-header">
             {{ form.form_title }} 
@@ -689,28 +767,28 @@ function effectsToggler(conditionText,effects,evaluation){
                         <!-- field renderer start-->
                         <!-- v-if="f != null && " -->
                         
-                        <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes(getId('pwid='+f.endpoint.split('/')[0],i))">
+                        <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes(f.id)">
                             
                             <label class="pwfv-fieldlabel">{{ f.text }} <span>*</span></label>
                             <RequestBindedFields
                                 :endpoint="f.endpoint"
                                 :based="f.based"
                                 :type="f.type"
-                                :value="getFieldValue('pwid='+f.endpoint.split('/')[0])"
+                                :value="getFieldValue(f.id)"
                                 :readonly="f.readonly"
-                                @onResult="e=>organizeInput('pwid='+f.endpoint.split('/')[0],f.text,e,f)"
-                                @onEmpty="deleteRBField('pwid='+f.endpoint.split('/')[0])"
+                                @onResult="e=>organizeInput(f,e)"
+                                @onEmpty="deleteRBField(f.id)"
                             />
                         </div>
                         <div v-if="f.content_type == 'scheduler'">
                             
                             <label class="pwfv-fieldlabel">{{ f.text }} <span>*</span></label>
                             <SchedulerSelect
-                                :schedule="getFieldValue('pwid=scheduler')"
-                                :service="getFieldValue('pwid=services')"
+                                :schedule="getFieldValue(f.id)"
+                                :service="selectedServiceFromScheduler"
                                 @onFetch="e=>fetchingSchedules(e)"
                                 @selectedService="e=>selectedService(e)"
-                                @onResult="e=>organizeInput('pwid=scheduler',f.text,e,f)"
+                                @onResult="e=>organizeInput(f,e)"
                             />
                         </div>
                         <div v-if="f.content_type == 'text'" v-html="f.text" :style="f.styles"></div>
@@ -724,11 +802,11 @@ function effectsToggler(conditionText,effects,evaluation){
                             :required="f.required"
                             :placeholder="f.placeholder"
                             :values="f.values"
-                            :select="f.type=='checkbox-group' ? getFieldValue(f.name) : null"
+                            :select="f.type=='checkbox-group' ? getFieldValue(f.id) : null"
                             :options="f.options"
                             :index="f.index"
-                            :value="getFieldValue(f.name)"
-                            @onResult="e=>organizeInput(f.name,f.label,e,f)"
+                            :value="getFieldValue(f.id)"
+                            @onResult="e=>organizeInput(f,e)"
                             />
                         </div>
                         <div v-if="f.content_type == 'field' && f.type == 'checkbox'">
@@ -740,19 +818,19 @@ function effectsToggler(conditionText,effects,evaluation){
                             :required="f.required"
                             :placeholder="f.placeholder"
                             :values="f.values"
-                            :select="f.type=='checkbox-group' ? getFieldValue(f.name) : null"
+                            :select="f.type=='checkbox-group' ? getFieldValue(f.id) : null"
                             :options="f.options"
                             :index="f.index"
-                            :value="getFieldValue(f.name)"
-                            @onResult="e=>organizeInput(f.name,f.label,e,f)"
+                            :value="getFieldValue(f.id)"
+                            @onResult="e=>organizeInput(f,e)"
                             />
                             <label :for="f.name" class="pwfvf-checkbox-label">{{ f.label }} <span v-if="f.required">*</span></label>
                         </div>
                         <div v-if="f.content_type == 'field' && f.type == 'paypal' && !refreshPayPal">
                             <PayPalButtons
-                                :service="getFieldValue('pwid=services')"
+                                :service="selectedServiceFromScheduler"
                                 :fieldData="JSON.parse(JSON.stringify(f))"
-                                :paid="getFieldValue(f.name)"
+                                :paid="getFieldValue(f.id)"
                                 :currency="form.declare.paypalCurrency"
                                 :paymentFunc="paidPaypal"
                                 :paymentFuncParams="[f.name,f.label,f]"
@@ -766,28 +844,28 @@ function effectsToggler(conditionText,effects,evaluation){
                 <div class="pwfv-maingrid-2" v-if="currentPage.page_columns == 2">
                     <div class="pwfv-fielditem " v-for="f,i in filteredByColumn(2)" v-show="f != null && (f.hidden == undefined || f.hidden == false)" :key="i">
                         <!-- field renderer start-->
-                        <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes(getId('pwid='+f.endpoint.split('/')[0],i))">
+                        <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes(f.id)">
                             
                             <label class="pwfv-fieldlabel">{{ f.text }} <span>*</span></label>
                             <RequestBindedFields
                                 :endpoint="f.endpoint"
                                 :based="f.based"
                                 :type="f.type"
-                                :value="getFieldValue('pwid='+f.endpoint.split('/')[0])"
+                                :value="getFieldValue(f.id)"
                                 :readonly="f.readonly"
-                                @onResult="e=>organizeInput('pwid='+f.endpoint.split('/')[0],f.text,e,f)"
-                                @onEmpty="deleteRBField('pwid='+f.endpoint.split('/')[0])"
+                                @onResult="e=>organizeInput(f,e)"
+                                @onEmpty="deleteRBField(f.id)"
                             />
                         </div>
                         <div v-if="f.content_type == 'scheduler'">
                             
                             <label class="pwfv-fieldlabel">{{ f.text }} <span>*</span></label>
                             <SchedulerSelect
-                                :schedule="getFieldValue('pwid=scheduler')"
-                                :service="getFieldValue('pwid=services')"
+                                :schedule="getFieldValue(f.id)"
+                                :service="selectedServiceFromScheduler"
                                 @onFetch="e=>fetchingSchedules(e)"
                                 @selectedService="e=>selectedService(e)"
-                                @onResult="e=>organizeInput('pwid=scheduler',f.text,e,f)"
+                                @onResult="e=>organizeInput(f,e)"
                             />
                         </div>
                         <div v-if="f.content_type == 'text'" v-html="f.text" :style="f.styles"></div>
@@ -801,11 +879,11 @@ function effectsToggler(conditionText,effects,evaluation){
                             :required="f.required"
                             :placeholder="f.placeholder"
                             :values="f.values"
-                            :select="f.type=='checkbox-group' ? getFieldValue(f.name) : null"
+                            :select="f.type=='checkbox-group' ? getFieldValue(f.id) : null"
                             :options="f.options"
                             :index="f.index"
-                            :value="getFieldValue(f.name)"
-                            @onResult="e=>organizeInput(f.name,f.label,e,f)"
+                            :value="getFieldValue(f.id)"
+                            @onResult="e=>organizeInput(f,e)"
                             />
                         </div>
                         <div v-if="f.content_type == 'field' && f.type == 'checkbox'">
@@ -817,19 +895,19 @@ function effectsToggler(conditionText,effects,evaluation){
                             :required="f.required"
                             :placeholder="f.placeholder"
                             :values="f.values"
-                            :select="f.type=='checkbox-group' ? getFieldValue(f.name) : null"
+                            :select="f.type=='checkbox-group' ? getFieldValue(f.id) : null"
                             :options="f.options"
                             :index="f.index"
-                            :value="getFieldValue(f.name)"
-                            @onResult="e=>organizeInput(f.name,f.label,e,f)"
+                            :value="getFieldValue(f.id)"
+                            @onResult="e=>organizeInput(f,e)"
                             />
                             <label :for="f.name" class="pwfvf-checkbox-label">{{ f.label }} <span v-if="f.required">*</span></label>
                         </div>
                         <div v-if="f.content_type == 'field' && f.type == 'paypal' && !refreshPayPal">
                             <PayPalButtons
-                                :service="getFieldValue('pwid=services')"
+                                :service="selectedServiceFromScheduler"
                                 :fieldData="JSON.parse(JSON.stringify(f))"
-                                :paid="getFieldValue(f.name)"
+                                :paid="getFieldValue(f.id)"
                                 :currency="form.declare.paypalCurrency"
                                 :paymentFunc="paidPaypal"
                                 :paymentFuncParams="[f.name,f.label,f]"

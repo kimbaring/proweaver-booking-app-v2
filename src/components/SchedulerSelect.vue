@@ -51,8 +51,9 @@ export default{
             });
         },
         service(){
-            if(this.scheduleSelection) return;
-            this.fetchScheds();
+            this.waitForCondition(()=>this.fetching == false,()=>{
+                this.fetchScheds();
+            })
         }
     },
     async mounted(){
@@ -65,12 +66,16 @@ export default{
         this.qd.d = date.getDate();
 
         this.buildCalendar();
+
+        this.waitForCondition(()=>![undefined,null,''].includes(this.service),()=>this.fetchScheds().then(()=>this.buildCalendar()))
+        
+        this.chosenSchedule = this.schedule
         
         if(['',null].includes(this.schedule)) return;
         this.fetching = true;
         let requestString = 'schedules/fetchAvailable?book_schedule_id='+this.schedule;
         if(this.service != '' && this.service != null) requestString+='&book_schedule_service='+this.service  
-        let res = await axios.post(requestString,'default')
+        let res = axios.post(requestString,'default')
         if(res.data == null || !res.data.success) return;
         date = new Date(res.data.result[0].book_schedule_date);
         this.cc.y = date.getFullYear();
@@ -80,14 +85,18 @@ export default{
         this.qd.m = date.getMonth();
         this.qd.d = date.getDate();
         this.fetching = false;
-        this.fetchScheds().then(()=>{
-            this.buildCalendar();
-            this.chosenSchedule = this.schedule
-        })
+        
         
     },
     methods:{
         dateFormat,
+        waitForCondition(condition, action) {
+            if (condition()) {
+                action();
+            } else {
+                setTimeout(() => this.waitForCondition(condition, action), 100); // Wait for 100 milliseconds and check again
+            }
+        },
         selectSchedule(sched){
             if(
                 new Date(sched.book_schedule_date+' '+sched.book_schedule_timestart).getTime() <=

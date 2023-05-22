@@ -29,14 +29,14 @@ watch(()=>props.form,()=>{
 // methods  
 
 function evaluateRules(textRules){
-    textRules = textRules.split(';;')
+    textRules = textRules.split(' :break;')
     let conditionsAndEffects = []
 
     textRules.forEach(el=>{
         el = el.trim()  
         if(el == '' || el.match(/^\s+$/g)) return
         let condition = parseConditions(el.split('?')[0].trim())
-        let effect = tokenizeEffects(el.split('?')[1].trim().split(';').map(effel=>effel.trim()))
+        let effect = tokenizeEffects(el.split('?')[1].trim().split(' :;').map(effel=>effel.trim()))
         conditionsAndEffects.push({
             condition,effect
         })
@@ -49,26 +49,70 @@ function evaluateRules(textRules){
 
 
     function tokenizeEffects(effectsArray) {
-  function tokenizeString(inputString) {
-    const regex = /\s+|\[([^[\]]+)\]|([.=])/g;
-    return inputString.split(regex).filter(token => token != null).filter(token => token.trim() !== '');
+        function customEffectsSplitter(text) {
+  const delimiters = ['='];
+  let currentToken = '';
+  const tokens = [];
+
+  for (let i = 0; i < text.length; i++) {
+    const currentChar = text[i];
+
+    if (tokens.length === 0) {
+      if (currentToken.match(/\[[a-zA-Z0-9.\-_]+\]/g)) {
+        tokens.push(currentToken);
+        currentToken = '';
+      } else {
+        currentToken += currentChar;
+      }
+    } else {
+      if (delimiters.includes(currentChar)) {
+        if (currentToken !== '') {
+          tokens.push(currentToken.trim());
+          currentToken = '';
+        }
+        tokens.push(currentChar);
+      } else {
+        currentToken += currentChar;
+      }
+    }
   }
 
-  let effects = [];
-  effectsArray.forEach(el => {
-    let tokenized = tokenizeString(el);
-    let field = tokenized[0].startsWith('[') && tokenized[0].endsWith(']')
-      ? tokenized[0].slice(1, -1)
-      : tokenized[0];
+  if (currentToken !== '') {
+    tokens.push(currentToken.trim());
+    currentToken = '';
+  }
 
-    effects.push({
-      field: field,
-      prop: tokenized[2],
-      value: tokenized[4],
-    });
-  });
-  return effects;
+  const remainingText = text.slice(tokens.join('').length).trim();
+  if (remainingText !== '') {
+    tokens.push(remainingText);
+  }
+
+  return tokens;
 }
+
+
+
+
+        function tokenizeString(inputString) {
+            const regex = /\s+|\[([^[\]]+)\](?=\s|$)|([.=])(?=\s|$)|"([^"]*)"(?=\s|$)/g
+            return customEffectsSplitter(inputString).filter((token) => token.trim() !== '');
+        }
+
+        let effects = [];
+        effectsArray.forEach(el => {
+            let tokenized = tokenizeString(el);
+            let field = tokenized[0].startsWith('[') && tokenized[0].endsWith(']')
+            ? tokenized[0].slice(1, -1)
+            : tokenized[0];
+
+            effects.push({
+            field: field,
+            prop: tokenized[1].trim(),
+            value: tokenized[3].trim()
+            });
+        });
+        return effects;
+        }
 
     function parseConditions(text) {    
         const conditions = [];
@@ -181,7 +225,7 @@ function interpretRulesInEnglish(ce){
         </div>
     </div>
 
-    <textarea v-model="rules" class="font-mono mb-2" placeholder="Rules here..."></textarea>
+    <textarea v-model="rules" class="font-mono mb-2 h-[200px]" placeholder="Rules here..."></textarea>
 
     <button @click="evaluateRules(rules)" class="transition bg-green-700 text-white p-2 rounded-md mr-2 hover:scale-105 active:scale-95">Interpret Rules</button>
 

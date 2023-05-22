@@ -70,7 +70,7 @@ export const pageDefault = {
 export const formData = {
     "form_title": "Default Form",
     "declare": { "paypalClientID": "", "paypalCurrency": "USD","notifEmails":[],paypalEmail:'',nameIndex:'default_name',phoneIndex:''},
-    "conditionals": '20 in_array {20,50,70,80} && 20 == 20 ? default_location.hidden = true',
+    "conditionals": '20 in_array {20,50,70,80} && 20 == 20 ? [default_gender].readonly = true',
     "design": { "primaryColor": "#446523", "pagenavDesign": "row", "css": null },
     "pages": [
         {
