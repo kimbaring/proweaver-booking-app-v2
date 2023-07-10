@@ -1,13 +1,15 @@
 <script>
-import {axios, dateFormat} from '../functions'
+import {axios, dateFormat,dateAdjusted,dateOffseted} from '../functions'
+import StyledAlertVue from './SchedulerV2/StyledAlert.vue'
 
 export default{
     emits:['onResult','onFetch','selectedService'],
+    components:{StyledAlertVue},
     props:{
         schedule: {
             type: String
         },
-        service:{
+        serviceSelect:{
             default:'',
             type:String
         }
@@ -22,7 +24,16 @@ export default{
             availableSchedules:[],
             fetching:false,
             chosenSchedule:null,
-            scheduleSelection: false
+            scheduleSelection: false,
+            service:null,
+            styledAlert:{
+                header:'Scheduler Error',
+                body:'asdsad',
+                buttons:[],
+                type:'neutral',
+                duration:2000,
+                show:false
+            }
         }
     },
     watch:{
@@ -31,65 +42,70 @@ export default{
         },
         async schedule(){
             if(['',null].includes(this.schedule)) return;
-            this.fetching = true;
             this.chosenSchedule = this.schedule
-            let requestString = 'schedules/fetchAvailable?book_schedule_id='+this.schedule;
-            if(this.service != '' && this.service != null) requestString+='&book_schedule_service='+this.service
-            let res = await axios.post(requestString,'default')
-            this.scheduleSelection = false;
-            if(res.data == null || !res.data.success) return;
-            let date = new Date(res.data.result[0].book_schedule_date);
-            this.cc.y = date.getFullYear();
-            this.cc.m = date.getMonth();
-            this.cc.d = date.getDate();
-            this.qd.y = date.getFullYear();
-            this.qd.m = date.getMonth();
-            this.qd.d = date.getDate();
-            this.fetching = false;
-            this.fetchScheds().then(()=>{
-                this.buildCalendar();
-            });
         },
-        service(){
+        serviceSelect(){
+            this.service = this.serviceSelect
             this.waitForCondition(()=>this.fetching == false,()=>{
+    
                 this.fetchScheds();
             })
         }
     },
     async mounted(){
-        let date = new Date();
+        this.service = this.serviceSelect
+        let date = this.dateAdjusted();
         this.cc.y = date.getFullYear();
         this.cc.m = date.getMonth();
         this.cc.d = date.getDate();
         this.qd.y = date.getFullYear();
         this.qd.m = date.getMonth();
         this.qd.d = date.getDate();
-
-        this.buildCalendar();
-
-        this.waitForCondition(()=>![undefined,null,''].includes(this.service),()=>this.fetchScheds().then(()=>this.buildCalendar()))
+        
+        this.buildCalendar()
         
         this.chosenSchedule = this.schedule
-        
-        if(['',null].includes(this.schedule)) return;
+        if(['',null,undefined].includes(this.schedule)) {
+            this.fetchScheds().then(()=>this.buildCalendar())
+            return
+        }   
+
         this.fetching = true;
         let requestString = 'schedules/fetchAvailable?book_schedule_id='+this.schedule;
         if(this.service != '' && this.service != null) requestString+='&book_schedule_service='+this.service  
-        let res = axios.post(requestString,'default')
+        let res = await axios.post(requestString,'default')
         if(res.data == null || !res.data.success) return;
-        date = new Date(res.data.result[0].book_schedule_date);
+        date = this.dateAdjusted(res.data.result[0].book_schedule_date);
         this.cc.y = date.getFullYear();
         this.cc.m = date.getMonth();
         this.cc.d = date.getDate();
         this.qd.y = date.getFullYear();
         this.qd.m = date.getMonth();
         this.qd.d = date.getDate();
-        this.fetching = false;
+        
+        this.waitForCondition(()=>this.fetching == false,()=>{
+            this.fetchScheds().then(()=>{
+                this.$emit('selectedService',res.data.result[0])
+                this.buildCalendar()
+                this.fetching = false;
+            })
+            
+        })
         
         
     },
     methods:{
         dateFormat,
+        dateAdjusted,
+        dateOffseted,
+        alertNotif(header,body,type,buttons=[],duration=2000){
+            this.styledAlert.header = header;
+            this.styledAlert.body = body;
+            this.styledAlert.type = type;
+            this.styledAlert.buttons = buttons;
+            this.styledAlert.duration = duration;
+            this.styledAlert.show = true;
+        },
         waitForCondition(condition, action) {
             if (condition()) {
                 action();
@@ -100,28 +116,44 @@ export default{
         selectSchedule(sched){
             if(
                 new Date(sched.book_schedule_date+' '+sched.book_schedule_timestart).getTime() <=
-                new Date().getTime()
+                this.dateOffseted().getTime()
             ){
-                alert('Cannot select a finished schedule!')
+                this.alertNotif('Schedule Done','You cannot select a finished schedule!','danger')
                 return
             }
 
             if(sched.is_full){
-                alert('Your chosen schedule is no longer available as it reached maximum number of bookings.')
+                this.alertNotif('Schedule Was Booked','Your chosen time slot Appointment with Dr. Cecil Poe is no longer available. Please make a selection for another time and date of the month, note that selections are based on "First response". Thank you!','danger')
+                return;
+            }
+
+            if(sched.book_schedule_special_status == 1){
+                this.alertNotif('Schedule Unavailable: Reserved','This schedule is already reserved. Please make a selection for another time and date of the month, note that selections are based on "First Response". Thank you!','danger')
+                return;
+            }
+
+            if(sched.book_schedule_special_status == 2){
+                this.alertNotif('Schedule Unavailable: Office Closed','<strong>Dr. Cecil Poe</strong> is not in the office. Please make a selection for another time and date of the month, note that selections are based on "First Response". Thank you!','danger')
+                return;
+            }
+
+
+            // only for capoe
+            if(sched.conflicts > 0){
+                this.alertNotif('Schedule Was Booked','Your chosen schedule is no longer available as it reached maximum number of bookings.','danger')
                 return;
             }
 
             this.chosenSchedule = sched.book_schedule_id
             this.scheduleSelection = true;
             this.$emit('onResult',this.chosenSchedule)
-            this.$emit('selectedService',sched.book_schedule_service)
+            this.$emit('selectedService',sched)
         },
         async fetchScheds(){
             if(this.fetching) return;
             this.fetching = true;
             let date = new Date(this.qd.y,this.qd.m,this.qd.d);
             this.availDates = [];
-            this.availableSchedules = [];
             let includeService = (this.service != '' && this.service != null) ? '&service='+this.service : ''
             let res = await axios.post(`schedules/availableSchedulesWithinMonth?month=${this.cc.m+1}&year=${this.cc.y}${includeService}`,'default');
             if(res.data != null && res.data.success){
@@ -132,23 +164,31 @@ export default{
             
             includeService = (this.service != '' && this.service != null) ? '&book_schedule_service='+this.service : ''
             res = await axios.post('schedules/fetchAvailable?book_schedule_date='+dateFormat('%y-%M-%D',date.getTime())+includeService,'default')
+            this.availableSchedules = [];
             if(res.data != null && res.data.success){
                 res.data.result.forEach(el=>{
                     if(el.book_schedule_maxappointment < el.count_appointments) el.schedule_full = true;
                     else el.schedule_full = false;
                     this.availableSchedules.push(el);
                 });
+
+                
+
                 if(this.value != null) this.selectedSchedule = this.value;
             }
+            
+            this.availableSchedules.sort((a,b)=>{
+                return this.dateAdjusted('2022-01-01'+' '+a.book_schedule_timestart).getTime() - this.dateAdjusted('2022-01-01'+' '+b.book_schedule_timestart).getTime()
+            })
             this.fetching = false;
 
             return;
         },
         buildCalendar(){
-            let startMonth = new Date(this.cc.y,this.cc.m,1);
-            let endMonth = new Date(this.cc.y,this.cc.m+1,0);
-            let offsetStart = new Date(this.cc.y,this.cc.m,1).getDay();
-            let offsetEnd = new Date(this.cc.y,this.cc.m+1,0).getDay();
+            let startMonth = this.dateAdjusted(this.cc.y,this.cc.m,1);
+            let endMonth = this.dateAdjusted(this.cc.y,this.cc.m+1,0);
+            let offsetStart = this.dateAdjusted(this.cc.y,this.cc.m,1).getDay();
+            let offsetEnd = this.dateAdjusted(this.cc.y,this.cc.m+1,0).getDay();
             startMonth.setDate(startMonth.getDate() - offsetStart);
             endMonth.setDate(endMonth.getDate() + (6 - offsetEnd));
             this.calendarBoxes = [];
@@ -162,12 +202,12 @@ export default{
                     scheds:this.fetchScheds(dateString),
                     onclick:async (dateString)=>{
                         if(this.fetching) return;
-                        let date = new Date(dateString);
+                        let date = this.dateAdjusted(dateString);
                         this.qd.y = date.getFullYear();
                         this.qd.m = date.getMonth();
                         this.qd.d = date.getDate();
                         if(date.getMonth() != this.cc.m){
-                            date = new Date(this.qd.y,this.qd.m,this.qd.d)
+                            date = this.dateAdjusted(this.qd.y,this.qd.m,this.qd.d)
                             this.cc.y = date.getFullYear();
                             this.cc.m = date.getMonth();
                             this.cc.d = date.getDate();
@@ -189,6 +229,9 @@ export default{
                             });
                             if(this.value != null) this.selectedSchedule = this.value;
                         }
+                        this.availableSchedules.sort((a,b)=>{
+                            return this.dateAdjusted('2022-01-01'+' '+a.book_schedule_timestart).getTime() - this.dateAdjusted('2022-01-01'+' '+b.book_schedule_timestart).getTime()
+                        })
                         this.fetching = false;
                     }
                 }
@@ -196,14 +239,14 @@ export default{
                 startMonth.setDate(startMonth.getDate() + 1);
             }
 
-            this.title = dateFormat('%lm %y',new Date(this.cc.y,this.cc.m,this.cc.d).getTime());
+            this.title = dateFormat('%lm %y',this.dateAdjusted(this.cc.y,this.cc.m,this.cc.d).getTime());
         },
         nextMonths(num){
             if(this.fetching) return;
-            let date = new Date(this.cc.y,this.cc.m,this.cc.d);
+            let date = this.dateAdjusted(this.cc.y,this.cc.m,this.cc.d);
             date.setMonth(date.getMonth() + num);
-            if(num > 0 && new Date(this.cc.y,this.cc.m+2,0).getDate() < this.cc.d) date.setMonth(date.getMonth() - 1);
-            if(num < 0 && new Date(this.cc.y,this.cc.m-1,0).getDate() < this.cc.d) date.setMonth(date.getMonth() + 1);
+            if(num > 0 && this.dateAdjusted(this.cc.y,this.cc.m+2,0).getDate() < this.cc.d) date.setMonth(date.getMonth() - 1);
+            if(num < 0 && this.dateAdjusted(this.cc.y,this.cc.m-1,0).getDate() < this.cc.d) date.setMonth(date.getMonth() + 1);
             this.qd.y = this.cc.y = date.getFullYear();
             this.qd.m = this.cc.m = date.getMonth();
             this.qd.d = this.cc.d = date.getDate();
@@ -216,6 +259,18 @@ export default{
 </script>
 
 <template>
+
+<StyledAlertVue
+    :header="styledAlert.header"
+    :body="styledAlert.body"
+    :buttons="styledAlert.buttons"
+    :type="styledAlert.type"
+    :duration="styledAlert.duration"
+    :show="styledAlert.show"
+    @dismiss="styledAlert.show=false"
+    @onResult="e=>alertResult=e"
+/>
+
     <div class="pwfvf-scheduler"> <!--scheduler parent -->
         <div class="pwfvf-scheduler-header">
             <button @click="nextMonths(-1)">&#10094;</button>
@@ -224,18 +279,28 @@ export default{
             <button @click="nextMonths(1)">&#10095;</button>
         </div>
         <div class="pwfvf-scheduler-dateboxes">
-            <div @click="cb.onclick(cb.date)" class="pwfvf-scheduler-datebox" v-for="cb,i in calendarBoxes" :class="{notCurrentMonth: !cb.isCurrentMonth, active:new Date(cb.date + ' 00:00:00').getTime() == new Date(qd.y,qd.m,qd.d).getTime(), hasSchedule:availDates.includes(cb.date)}">
+            <div>SUN</div>
+            <div>MON</div>
+            <div>TUE</div>
+            <div>WED</div>
+            <div>THU</div>
+            <div>FRI</div>
+            <div>SAT</div>
+            <div @click="cb.onclick(cb.date)" class="pwfvf-scheduler-datebox" v-for="cb,i in calendarBoxes" :class="{notCurrentMonth: !cb.isCurrentMonth, active:this.dateAdjusted(cb.date + ' 00:00:00').getTime() == this.dateAdjusted(qd.y,qd.m,qd.d).getTime(), hasSchedule:availDates.includes(cb.date)}">
                 <span>{{cb.dateNum}}</span>
             </div>
         </div>
         <div class="pwfvf-scheduler-availscheds">
             <div class="spinner" v-if="fetching"></div>
             <div class="pwfvf-scheduler-availscheds-empty" v-if="!fetching && availableSchedules.length == 0">No schedules for this date...</div>
-            <div class="pwfvf-scheduler-availscheds-item" v-for="asc in availableSchedules" @click="selectSchedule(asc)" :class="{active:chosenSchedule == asc.book_schedule_id}">
+            <div class="pwfvf-scheduler-availscheds-item" v-for="asc in availableSchedules" @click="selectSchedule(asc)" :class="{active:chosenSchedule == asc.book_schedule_id}" v-show="asc.conflicts == 0">
                 <h2>{{ asc.book_schedule_service }}
-                    <span v-if="asc.is_full"> FULL</span>
+                    <span v-if="(asc.conflicts > 0 || asc.is_full ) && asc.book_schedule_special_status == 0">Booked</span>
                     <span v-if="new Date(asc.book_schedule_date+' '+asc.book_schedule_timestart).getTime() <=
-                new Date().getTime()"> DONE</span>
+                dateOffseted().getTime() && asc.book_schedule_special_status == 0">Done</span>
+                <span v-if=" asc.book_schedule_special_status != 0">{{ ['None','Reserved','Closed'][asc.book_schedule_special_status] }}</span>
+                    <!-- <span v-if="this.dateAdjusted(asc.book_schedule_date+' '+asc.book_schedule_timestart).getTime() <=
+                this.dateAdjusted().getTime()">Booked</span> -->
                 </h2>
                 <small>{{ dateFormat('%h:%I%a',asc.book_schedule_date +' '+asc.book_schedule_timestart)}} - 
                 {{ dateFormat('%h:%I%a',asc.book_schedule_date +' '+asc.book_schedule_timeend)}}</small>

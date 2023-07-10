@@ -15,12 +15,24 @@
         </div>
         <div class="pwfvf-radio-group" v-if="type == 'radio-group'" :style="{'grid-template-columns':columns}" :class="{'pwcf-readonly':readonly}">
             <label v-for="v,i in values" :key="i" :for="name+'_'+i" :class="{active:valueC == v.value}">
-                {{v.label}}
                 <input style="display:none" :readonly="readonly" :id="name+'_'+i" type="radio" :name="name" :checked="valueC == v.value" @change="valueC = v.value;">
+                {{v.label}}
             </label>
         </div>
+
+        <!-- <div class="pwfvf-select" :class="'pwfvf-select-'+name"  v-if="type == 'select'" @click="closeAllOpenSelects" :data-pwfvf="name" >
+            <span v-html="selectedValue"></span>
+            <i class="pwfvf-select-caret-down">&#9660;</i> 
+            <select class="w-full" :class="{'pwcf-readonly':readonly}">
+                <option :class="{active:valueC == v.value}" class="pwfvf-select-option" v-for="v,i in values" :key="i" @click="loaded=true;valueC = v.value;selectedValue = v.label" v-html="v.label">
+                    
+                </option>
+            </select>
+        </div> -->
+
         
-        <div class="pwfvf-select" :class="'pwfvf-select-'+name"  v-if="type == 'select'" @click="closeAllOpenSelects" :data-pwfvf="name" >
+        
+        <div class="pwfvf-select" :class="'pwfvf-select-'+name"  v-if="type == 'select'" @click="closeAllOpenSelects" :data-pwfvf="name" tabindex="1">
             <span v-html="selectedValue"></span>
             <i class="pwfvf-select-caret-down">&#9660;</i>
             <div class="pwfvf-select-menu" :class="{'pwcf-readonly':readonly}">
@@ -29,6 +41,19 @@
                 </div>
             </div>
         </div>
+
+        <div class="pwfvf-select" :class="'pwfvf-select-'+name"  v-if="type == 'datalist'" @click="closeAllOpenSelects" :data-pwfvf="name" tabindex="1">
+            <input class="w-full bg-transparent outline-none" v-model="selectedValue" :placeholder="placeholder" @input="dataListTyping"/>
+            <i class="pwfvf-select-caret-down">&#9660;</i>
+            <div class="pwfvf-select-menu" :class="{'pwcf-readonly':readonly}">
+                <div :class="{active:valueC == v.value}" class="pwfvf-select-option" v-for="v,i in filteredDatalist" :key="i" @click="loaded=true;valueC = v.value;selectedValue = v.label" v-html="v.label">
+                    
+                </div>
+            </div>
+        </div>
+
+
+
         <span class="pwfvf-field-error" v-if="error != ''">{{error}}</span>
     </div>
 </template>
@@ -57,15 +82,27 @@ export default({
             error:'',
             largest: 0,
             console,
+            searchVal:'',
             loaded:false,
-            groupTypes:['checkbox-group','radio-group','select'],
+            groupTypes:['checkbox-group','radio-group','select','datalist'],
             debounceTimer: null
+        }
+    },
+    computed:{
+        filteredDatalist(){
+            let filtered = this.values.filter(el=>{
+                if(el.label == this.selectedValue) this.valueC = this.value
+                if(el.label.toLowerCase().includes(this.selectedValue.toLowerCase()) || this.selectedValue == '') return true;
+                return false;
+            })
+            if(filtered.length == 0) this.valueC = ''
+            return filtered
         }
     },
     watch:{
         value(){
             
-            if(this.value == null && this.type == 'select') {
+            if(this.value == null && (this.type == 'select' || this.type == 'datalist')) {
                 if(this.values.length == 0) return;
                 this.selectedValue = this.values[0].label
                 this.valueC = this.values[0].value
@@ -73,13 +110,13 @@ export default({
                 return;
             }
             this.valueC = this.value;
-            // if(this.type == 'select') this.console.log(this.type == 'select',this.values.length, this.name, this.values.filter(el=>el.value==this.value)[0].label)
+            // if(this.type == 'select' || this.type == 'datalist') this.console.log(this.type == 'select' || this.type == 'datalist',this.values.length, this.name, this.values.filter(el=>el.value==this.value)[0].label)
 
-            if(this.type == 'select') if(this.values.length > 0 && this.value != null && this.value != '' && this.values.filter(el=>el.value==this.value) != null) this.selectedValue = this.values.filter(el=>el.value==this.value)[0].label
+            if(this.type == 'select' || this.type == 'datalist') if(this.values.length > 0 && this.value != null && this.value != '' && this.values.filter(el=>el.value==this.value) != null) this.selectedValue = this.values.filter(el=>el.value==this.value)[0].label
         },
         values:{
             handler(val){
-                if(this.type == 'select') {
+                if(this.type == 'select' || this.type == 'datalist') {
                     if(this.loaded) return;
                     if(this.values.length == 0) return;
                     if((this.value != '' && this.value != null) || this.values.length == 0) return;
@@ -116,13 +153,13 @@ export default({
         this.json = JSON.stringify(this.form);
 
         if(this.type == 'checkbox-group') this.selectC = this.select ?? [];
-        if(this.type == 'select') {
+        if(this.type == 'select' || this.type == 'datalist') {
             if(this.values.length == 0) return;
             if(this.value == null){
-                this.selectedValue = this.values[0].label
+                this.selectedValue = this.values.filter(el=>el.value==this.value)[0] ? this.values.filter(el=>el.value==this.value)[0].label : ''
                 this.valueC = this.values[0].value;
             }else{
-                this.selectedValue = this.values.filter(el=>el.value==this.value)[0].label
+                this.selectedValue = this.values.filter(el=>el.value==this.value)[0] ? this.values.filter(el=>el.value==this.value)[0].label : ''
                 this.valueC = this.value
                 this.values.forEach(el=>this.largest = (this.largest < el.label.length) ? el.label.length : this.largest);
             }
@@ -131,6 +168,9 @@ export default({
         }
     },
     methods:{
+        dataListTyping(){
+            document.querySelector(`.pwfvf-select[data-pwfvf='${this.name}']`).classList.add('shown')
+        },
         validate(text){
             let emailregex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/g;
             let teleregex = /^[0-9+()]+[0-9.+()\- ]+[0-9.+()]+$/g;

@@ -15,7 +15,7 @@
         
         <div class="scheduler-form-header">
             <h4 class="text-lg font-bold">{{(queSchedule.id == '') ? 'Add Schedules' : 'Edit Schedule'}}</h4>
-            <a href="javascript:;" @click.prevent="modalClose=true;$emit('close',modalClose)">&#10006;</a>
+            <a href="javascript:;" @click.prevent="modalClose=true;$emit('close',modalClose)" class="bg-white block"><i class="text-gray-900" v-html="icons.close"></i></a>
         </div>
         <div class="scheduler-form-body">
             <div class="scheduler-form-inputs">
@@ -148,10 +148,6 @@
                                     <i v-html="icons.trash"></i>
                                 </button>
                             </div>
-                            
-                            
-                            
-                            
                         </div>
                     </div>
                     <button class="basic mt-2 block bg-green-700 text-white p-1" @click="timeSlots.push({time_start:'',time_end:''})">Add Time Slot</button>
@@ -463,7 +459,7 @@ export default{
 .scheduler-form-parent{background: #fff;max-width: 500px;width: 90%;position: absolute;top:50%;left:50%;transform:translateX(-50%) translateY(-50%);border-radius: 5px;transition: 0.5s ease-out;}
 
 .scheduler-form-header{padding:20px;background: #111827;color:#fff;border-radius: 5px 5px 0 0;position: relative;}
-.scheduler-form-header a{all:unset;position: absolute;right:20px;top:50%;transform:translateY(-50%);transition: 0.1s;height: 30px;width: 30px;line-height:30px;text-align: center;}
+.scheduler-form-header a{all:unset;position: absolute;right:20px;top:50%;transform:translateY(-50%);transition: 0.1s;height: 30px;width: 30px;line-height:30px;text-align: center;background: #fff;border-radius: 50%;}
 .scheduler-form-header a:hover{scale: 1.1;}
 .scheduler-form-header a:active{scale: 0.9;}
 .scheduler-form-body{padding: 20px}

@@ -395,11 +395,31 @@ export default{
             this.hasFetched = true;
             axios.post(`schedules/fetch?book_schedule_date>=${start}&book_schedule_date<=${end}`).then(res=>{
                 if(!res.data.success){
-                    this.schedules = {}
                     return
                 }
+
+                for(let schedule in this.schedules){
+
+                    if(
+                        this.editTracker.created.includes(schedule) ||
+                        this.editTracker.updated.includes(schedule) ||
+                        this.editTracker.deleted.includes(schedule)
+                    ) continue
+                    delete this.schedules[schedule]
+                    
+                }
+
                 res.data.result.forEach(el=>{
-                    if(this.schedules[el.book_schedule_id] != null && el != this.schedules[el.book_schedule_id]) return;
+
+
+                    if(this.schedules[el.book_schedule_id] != null) return;
+
+                    if(
+                        this.editTracker.created.includes(el.book_schedule_id) ||
+                        this.editTracker.updated.includes(el.book_schedule_id) ||
+                        this.editTracker.deleted.includes(el.book_schedule_id)
+                    ) return
+                    
                     this.schedules[el.book_schedule_id] = {
                         id:el.book_schedule_id,
                         shift_date: el.book_schedule_date,
@@ -412,6 +432,7 @@ export default{
                     }
                 })
 
+                
 
                 this.buildCalendar()
                 

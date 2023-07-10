@@ -55,7 +55,8 @@ function submit() {
     <form @submit.prevent="submit" class="max-w-[500px] absolute w-full bg-white px-10 py-10 text-center rounded-lg shadow top-[50%] left-[50%] -translate-x-2/4 -translate-y-2/4">
       <h2 class="  text-xl mb-10">
         <img :src="link('main-logo.png')" class="block mx-auto my-3 max-w-[250px]">
-        Booking App Admin
+        <p>Dr. Cecil Poe : Flexible Scheduling </p>
+        <p>Admin Dashboard</p>
       </h2>
       <label class="shadow-md block  border-gray-300 bg-gray-100 mb-2 rounded-md overflow-hidden">
         <input class="transition outline-none block w-full h-full p-2 bg-[#e5e5e5] focus:bg-[#f5f5f5]" placeholder="Username" v-model="userInput.username">

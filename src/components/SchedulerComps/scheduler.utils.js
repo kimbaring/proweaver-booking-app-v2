@@ -4,38 +4,54 @@ export function dateFormat(format='',dateString=''){
         console.error('%cFunction.js[dateformat()]:%c format parameter is empty','font-weight:700','font-weight:400');
         return;
     }
-    let m2 = date.toLocaleString('en-US',{month:'2-digit'});
-    let lm = date.toLocaleString('en-US',{month:'long'});
-    let sm = date.toLocaleString('en-US',{month:'long'}).substring(0,3);
-    let d = date.toLocaleString('en-US',{day:'numeric'});
-    let D = date.toLocaleString('en-US',{day:'2-digit'});
-    let y = date.toLocaleString('en-US',{year:'numeric'});
-    let h = date.toLocaleString('en-US',{hour12:true,hour:'numeric'}).replace(/( AM)|( PM)/g,'');
-    let H = date.toLocaleString('en-US',{hour12:false,hour:'2-digit',minimumIntegerDigits: 2});
-    let m = date.toLocaleString('en-US',{minute:'numeric'});
-    let getMinuteAndSeconds = date.toLocaleTimeString('en-US',{hour12:false,hour:  "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-    })
-    let array_getMinuteAndSeconds = getMinuteAndSeconds.split(':')
-    let M = array_getMinuteAndSeconds[1];
-    let s = date.toLocaleString('en-US',{second:'numeric'});
-    let S = array_getMinuteAndSeconds[2];
-    let a = date.toLocaleString('en-US',{hour12:true,hour:'numeric'}).replace(/[0-9]+ /g,'');
+    const options = {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    };
 
-    format = format.replace(/%m2/g,m2);
-    format = format.replace(/%lm/g,lm);
-    format = format.replace(/%sm/g,sm);
-    format = format.replace(/%d/g,d);
-    format = format.replace(/%D/g,D);
-    format = format.replace(/%y/g,y);
-    format = format.replace(/%h/g,h);
-    format = format.replace(/%H/g,H);
-    format = format.replace(/%m/g,m);
-    format = format.replace(/%M/g,M);
-    format = format.replace(/%s/g,s);
-    format = format.replace(/%S/g,S);
-    format = format.replace(/%a/g,a);
+    const options2 = {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        hour12: true,
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+    };
+
+    const dateTime = date.toLocaleString('en-US', options);
+    const [m2, D, y, H, M, S] = dateTime.split(/[/:,\s]/).filter(el=>el != "" && el != null);
+    const dateTime2 = date.toLocaleString('en-US', options2);
+    const [m_, d, y_, h, m, s,a] = dateTime2.split(/[/:,\s]/).filter(el=>el != "" && el != null);
+
+    let lm = date.toLocaleString('en-US',{timeZone:'UTC',month:'long'});
+    let sm = lm.substring(0,3);
+
+    const replacements = [
+        { pattern: /%m2/g, value: m2 },
+        { pattern: /%lm/g, value: lm },
+        { pattern: /%sm/g, value: sm },
+        { pattern: /%d/g, value: d },
+        { pattern: /%D/g, value: D },
+        { pattern: /%y/g, value: y },
+        { pattern: /%h/g, value: h },
+        { pattern: /%H/g, value: H },
+        { pattern: /%m/g, value: m },
+        { pattern: /%M/g, value: M },
+        { pattern: /%s/g, value: s },
+        { pattern: /%S/g, value: S },
+        { pattern: /%a/g, value: a }
+    ];
+    
+    for (const { pattern, value } of replacements) {
+        format = format.replace(pattern, value);
+    }
+      
     return format;
 }
 

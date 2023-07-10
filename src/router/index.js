@@ -45,7 +45,12 @@ const router = createRouter({
     {
       path: '/test',
       name: 'test',
-      component: ()=> import('../components/ConditionScriptor.vue')
+      component: ()=> import('../components/Tooltip.vue')
+    },
+    {
+      path: '/print',
+      name: 'print',
+      component: ()=> import('../views/PrintContent.vue')
     },
   ]
 })

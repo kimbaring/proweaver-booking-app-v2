@@ -1,6 +1,6 @@
 <script setup>
-import {onMounted, ref,watch,computed} from 'vue'
-import {axios,waitForCondition} from '../functions'
+import {onMounted, ref,watch,computed,reactive} from 'vue'
+import {axios,waitForCondition,dateFormat,dateFormatTimezone} from '../functions'
 import TemplatedFields from '../components/TemplatedFields.vue'
 import {formData,formCSS} from '../defaults'
 import icons,{iconsSolid} from '../assets/icons'
@@ -8,6 +8,7 @@ import SchedulerSelect from '../components/SchedulerSelect.vue'
 import RequestBindedFields from '../components/RequestBindedFields.vue'
 import PayPalButtons from '../components/PayPalButtons.vue'
 import { Paypal } from '../functions'
+import StyledAlertVue from '../components/SchedulerV2/StyledAlert.vue'
 
 let props = defineProps({
     form:{type:Object},
@@ -65,6 +66,16 @@ let indexFieldVals = ref({
 })
 let initialVals = ref({})
 let propsToModify = ref({})
+let isSubmitting = ref(false)
+let styledAlert = reactive({
+    header:'Scheduler Error',
+    body:'asdsad',
+    buttons:[],
+    type:'neutral',
+    duration:2000,
+    show:false
+})
+
 
 let allFields = computed(()=>{
     let pageFields = {}
@@ -134,21 +145,58 @@ function setCurrentPageRequired(){
 
 function selectedService(e){
     let index = userInput.value.findIndex(el=>el.id == 'default_services');
-    allFields.value.default_services.value = e
-    selectedServiceFromScheduler.value = e
+    allFields.value.default_services.value = ''
+    allFields.value.default_services.value = e.book_schedule_service
+    selectedServiceFromScheduler.value = e.book_schedule_service
+    // console.log(e.book_schedule_service,allFields.value.default_services.value)
+
+    if(allFields.value['default_scheduler_date'] == null){
+        form.value.pages[0].page_fields.unshift({
+            "id": "default_scheduler_date",
+            "content_type": "text",
+            "styles": "display:none",
+            "text": "Select Location",
+            "value":e.book_schedule_date,
+            "hidden":true,
+        })
+
+
+        form.value.pages[0].page_fields.unshift({
+            "id": "default_scheduler_timestart",
+            "content_type": "text",
+            "styles": "display:none",
+            "text": "Select Location",
+            "value":e.book_schedule_timestart,
+            "hidden":true,
+        })
+
+        form.value.pages[0].page_fields.unshift({
+            "id": "default_scheduler_timeend",
+            "content_type": "text",
+            "styles": "display:none",
+            "text": "Select Location",
+            "value":e.book_schedule_timeend,
+            "hidden":true,
+        })
+    }else{
+        allFields.value['default_scheduler_date'].value = e.book_schedule_date
+        allFields.value['default_scheduler_timestart'].value = e.book_schedule_timestart
+        allFields.value['default_scheduler_timeend'].value = e.book_schedule_timeend
+    }
+    
     if(index == -1){
         userInput.value.push({
             id:'default_services',
-            label: allFields.value.default_services.label,
-            value: e
+            label: allFields.value.default_services.text,
+            value: e.book_schedule_service
         })
         return;
     }
 
     userInput.value[index] = {
         id:'default_services',
-        label: allFields.value.default_services.label,
-        value: e
+        label: allFields.value.default_services.text,
+        value: e.book_schedule_service
     }
 
 }
@@ -238,6 +286,15 @@ function getFieldValue(fId){
     return allFields.value[fId].value
 }
 
+function alertNotif(header,body,type,buttons=[],duration=2000){
+    styledAlert.header = header;
+    styledAlert.body = body;
+    styledAlert.type = type;
+    styledAlert.buttons = buttons;
+    styledAlert.duration = duration;
+    styledAlert.show = true;
+}
+
 function organizeInput(f,e){
     
     let index = userInput.value.findIndex(el=>el.id == f.id);
@@ -258,18 +315,30 @@ function organizeInput(f,e){
         userReceiver = e;
     }
 
+    function formatInput(type,value){
+        if(value == '' || value == null) return value
+
+        if(type == 'date'){
+            return dateFormat('%lm %d, %y', value)
+        }else if(type == 'time'){
+            return dateFormat('%h:%I%a', '2023-05-01 '+value)
+        }
+
+        return value
+    }
+
     
     if(index == -1){
         userInput.value.push({
             id:f.id,
             label: (f.content_type == 'field') ? f.label : f.text,
-            value: e
+            value: formatInput(f.type,e)
         })
     }else{
         userInput.value[index] = {
             id:f.id,
             label: (f.content_type == 'field') ? f.label : f.text,
-            value: e
+            value: formatInput(f.type,e)
         }
     }
 
@@ -372,9 +441,10 @@ function beforePageChange(add,jumpTo=null){
             if(typeof field.value == 'checkbox-group'){
                 field.value = JSON.parse(JSON.stringify(field.value));  
                 if(field.value == null || field.value.length == 0) {
+                    let fieldLabel = (field.content_type == 'field') ? field.label : field.text
                     currentPageRequiredInvalids.value.push({
                         id: field.id,
-                        label: (field.content_type == 'field') ? field.label : field.text
+                        label: fieldLabel == ' ' ? f.placeholder : fieldLabel
                     }) 
                 }
 
@@ -382,9 +452,10 @@ function beforePageChange(add,jumpTo=null){
             } 
 
             if(['',null,[],undefined].includes(field.value)){
+                let fieldLabel = (field.content_type == 'field') ? field.label : field.text
                 currentPageRequiredInvalids.value.push({
                     id: field.id,
-                    label: (field.content_type == 'field') ? field.label : field.text
+                    label: fieldLabel == ' ' ? field.placeholder : fieldLabel
                 })
             }
         }
@@ -407,6 +478,7 @@ function beforePageChange(add,jumpTo=null){
 }
 
 function submit(){
+    isSubmitting.value = true;
     currentPageRequiredInvalids.value = []
     for(let crf in allRequiredFields.value){
         let field = allFields.value[crf]
@@ -418,35 +490,43 @@ function submit(){
         } 
 
         if(['',null,[],undefined].includes(field.value)){
+            let fieldLabel = (field.content_type == 'field') ? field.label : field.text
             currentPageRequiredInvalids.value.push({
                 id: field.id,
-                label: (field.content_type == 'field') ? field.label : field.text
-            })
+                label: fieldLabel == ' ' ? field.placeholder : fieldLabel
+            }) 
         }
     }
 
-    if(currentPageRequiredInvalids.value.length > 0) return;
-
-    if(grecaptcha.getResponse().length == 0){
-        alert('Please complete the reCAPTCHA!')
-        return;
+    if(currentPageRequiredInvalids.value.length > 0) {
+        isSubmitting.value = false;
+        return
     }
+
+    // if(grecaptcha.getResponse().length == 0){
+    //     alert('Please complete the reCAPTCHA!')
+    //     return;
+    // }
     
     axios.post('appointments/create',null,{
         form_receivers: JSON.stringify(form.value.declare.notifEmails),
-        book_appointment_locationname:location.value ?? '',
-        book_appointment_servicesname:services.value ?? '',
-        book_appointment_worker:worker.value ?? '',
-        book_appointment_scheduleid:schedule.value ?? '',
+        book_appointment_locationname:getFieldValue('default_location') ?? '',
+        book_appointment_servicesname:getFieldValue('default_services') ?? '',
+        book_appointment_worker:getFieldValue('default_worker') ?? '',
+        book_appointment_scheduleid:getFieldValue('default_scheduler') ?? '',
         book_appointment_name: indexFieldVals.value.name,
         book_appointment_phone: indexFieldVals.value.phone,
         book_appointment_email : userReceiver,
         book_appointment_custominputs: JSON.stringify(userInput.value),
+        book_appointment_status: 1,
+        book_appointment_created_at: dateFormatTimezone('%y-%M-%D %H:%I:%S'),
     }).then(res=>{
         if(res.data == null || !res.data.success){
             alert('Something went wrong! You may contact the website admin and inform them about this problem. Your feedback will be appreciated!')
             return;
         }
+
+        isSubmitting.value = false
         formSubmitted.value = true;
 
     });
@@ -535,6 +615,13 @@ function parseConditions(text) {
             rightOperand = rightOperand.slice(1, -1).split(',').map(item => item.trim());
         }else{
             rightOperand = rightOperand.trim()
+        }
+
+        
+
+        if(leftOperand.startsWith("[") && leftOperand.endsWith("]")){
+            leftOperand = leftOperand.slice(1, -1);
+            leftOperand = allFields.value[leftOperand] != null ? allFields.value[leftOperand].value : '';
         }
 
         conditions.push({
@@ -696,6 +783,11 @@ function tokenizeEffects(effectsArray) {
 
 
 function parseValue(value){
+    if(value.startsWith('[') && value.endsWith(']')){
+        if(allFields.value[value.substring(1,value.length - 1)] == null) return value
+        return getFieldValue(value.substring(1,value.length - 1))
+    }
+
     if(value == null || value == undefined) return value
     if(value.match(/^[0-9]+$/g) != null){ //match integer
        return parseInt(value);
@@ -718,10 +810,10 @@ function effectsToggler(conditionText,effects,evaluation){
             if(propsToModify.value[el.field] == null)
                 propsToModify.value[el.field] = {}
     
-            if(el.prop == 'required' || el.prop == 'hidden'){
-                if(el.prop == 'hidden' && parseValue(el.value) == false) return
-                if(el.prop == 'required' && parseValue(el.value) == true) return
-            }
+            // if(el.prop == 'required' || el.prop == 'hidden'){
+            //     if(el.prop == 'hidden' && parseValue(el.value) == false) return
+            //     if(el.prop == 'required' && parseValue(el.value) == true) return
+            // }
 
             propsToModify.value[el.field][el.prop] = parseValue(el.value)
 
@@ -736,22 +828,33 @@ function effectsToggler(conditionText,effects,evaluation){
                     propsToModify.value[field] = {}
 
                 if(allFields.value[field][prop] != initialVals.value[conditionText][field][prop]) return
-
+                // console.log(propsToModify.value)
                 if(propsToModify.value[field][prop] == null)
                     propsToModify.value[field][prop] = initialVals.value[conditionText][field][prop]
                 
             }
         }
+
+        
     }
 }
 
 </script>
 <template>
-    {{ allFields != null? Object.values(allFields).map(el=>el.value) : '' }}
+<StyledAlertVue
+    :header="styledAlert.header"
+    :body="styledAlert.body"
+    :buttons="styledAlert.buttons"
+    :type="styledAlert.type"
+    :duration="styledAlert.duration"
+    :show="styledAlert.show"
+    @dismiss="styledAlert.show=false"
+    @onResult="e=>alertResult=e"
+/>
+
    <div id="pwfv-parent" ref="formElement" v-if="form != null" data-responsive="">
         <div class="pwfv-header">
             {{ form.form_title }} 
-                
         </div>
         <div class="pwfv-body" v-if="!formSubmitted">
             <div class="pwfv-navigation" v-if="form.pages.length > 1">
@@ -785,7 +888,7 @@ function effectsToggler(conditionText,effects,evaluation){
                             <label class="pwfv-fieldlabel">{{ f.text }} <span>*</span></label>
                             <SchedulerSelect
                                 :schedule="getFieldValue(f.id)"
-                                :service="selectedServiceFromScheduler"
+                                :serviceSelect="selectedServiceFromScheduler"
                                 @onFetch="e=>fetchingSchedules(e)"
                                 @selectedService="e=>selectedService(e)"
                                 @onResult="e=>organizeInput(f,e)"
@@ -793,7 +896,7 @@ function effectsToggler(conditionText,effects,evaluation){
                         </div>
                         <div v-if="f.content_type == 'text'" v-html="f.text" :style="f.styles"></div>
                         <div v-if="f.content_type == 'field' && !['checkbox','paypal'].includes(f.type)">
-                            <label class="pwfv-fieldlabel">{{ f.label }} <span v-if="f.required">*</span></label>
+                            <label class="pwfv-fieldlabel">{{ f.label }} <span v-if="f.required && f.label != ' '">*</span></label>
                             <TemplatedFields 
                             :type="f.type"
                             :name="f.name"
@@ -925,19 +1028,19 @@ function effectsToggler(conditionText,effects,evaluation){
                     </strong>
                 </div>    
                 <div class="pwfv-finalfields">
-                    <div class="pwfv-recaptcha-parent">                        
+                    <div class="pwfv-recaptcha-parent hidden" v-show="false">                        
                         <div id="recaptcha" v-show="currentPageIndex == form.pages.length -1" class="g-recaptcha" :data-sitekey="siteKey"></div>
                     </div>
                     <button @click="beforePageChange(-1)" v-if="currentPageIndex != 0"><i v-html="icons.arrowLeft"></i> Prev</button>
                     <button @click="beforePageChange(1)" v-if="currentPageIndex != form.pages.length -1">Next <i v-html="icons.arrowRight"></i></button>
-                    <button @click="submit()" v-if="currentPageIndex == form.pages.length -1 " class="pwfv-submit">Submit</button>
+                    <button @click="submit()" :disabled="isSubmitting" v-if="currentPageIndex == form.pages.length -1 " class="pwfv-submit">Submit</button>
                 </div>
             </div>
         </div>
         <div class="pwfv-success" v-if="formSubmitted">
             <div class="pwfv-success-box">
                 <div class="pwfv-success-checkmark"><i v-html="iconsSolid.check"></i></div>
-                Your entry has been successfully submitted. We will process it and update you as soon as possible.
+                Your entry has been successfully submitted.
             </div>
             
         </div>

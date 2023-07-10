@@ -1,15 +1,25 @@
 <script setup>
 import MasterLayoutVue from "../components/MasterLayout.vue";
 import {onMounted, ref} from 'vue';
-import {axios,dateFormat} from '../functions'
+import {axios,dateAdjusted,dateFormat,dateOffseted,dateFormatTimezone} from '../functions'
 import icons from '../assets/icons';
 import CustomField from '../components/SchedulerComps/CustomField.vue'
 import AppointmentsCalendar from '../components/AppointmentsCalendar.vue'
+import Tooltip from "../components/Tooltip.vue";
+import StyledAlert from '../components/SchedulerComps/StyledAlert.vue';
 
 let locations = ref(0)
 let services = ref(0)
 let workers = ref(0)
 let viewMode = ref(0)
+let styledAlert = ref({
+  header:'Scheduler Error',
+  body:'asdsad',
+  buttons:[],
+  type:'neutral',
+  duration:2000,
+  show:false
+})
 let fetchSettings = ref({
   date: dateFormat('%y-%M-%D'),
   orderBy: 'book_appointment_id',
@@ -34,18 +44,63 @@ onMounted(()=>{
   else {
     fetchSettings.value.date = getparams.get('date');
     fetchSettings.value.includeDate = true;
-    fetchSettings.value.includeFinished = true;
   }
+  fetchSettings.value.includeFinished = true;
+  fetchSettings.value.orderBy = 'DATE(`book_schedule_date`) %orderdir%, `book_schedule_timestart` %orderdir%'
+  fetchSettings.value.orderDir = 'DESC'
   fetchFilter();
 
   fetchCount();
 })
 
-function changeStatus(id, status){
-  if(!confirm(['Pending', 'Approve', 'Deny','Complete'][status] + ' this appointment?')) return;
+function styledAlertFunc(header,body,type,buttons=[],duration=2000){
+    styledAlert.value.header = header;
+    styledAlert.value.body = body;
+    styledAlert.value.type = type;
+    styledAlert.value.buttons = buttons;
+    styledAlert.value.duration = duration;
+    styledAlert.value.show = true;
+}
+
+let alertResult = ref(null);
+function waitForConfirm(header,body,type,buttons=[],duration=2000){
+    alertResult.value = null;
+    styledAlertFunc(header,body,type,buttons,duration);
+
+    return new Promise(res=>{
+        let wait = setInterval(()=>{
+            if(alertResult.value == null) return
+            
+            clearInterval(wait)
+            res(alertResult.value)
+            alertResult.value = null
+        },10)
+    })
+}
+        
+
+async function changeStatus(id, status){
+  let prompts = [
+    {title: 'Pending Appointment',body:'Nothing to do here...',type:'success',buttons:null},
+    {title: 'Approve this appointment?',body:'Selecting \'yes\' will prompt the booking app to send a notification confirming the approval of the client\'s appointment.',type:'warning',},
+    {title: 'Deny this appointment?',body:'Selecting \'yes\' will prompt the booking app to send a notification informing the client that their appointment has been denied.',type:'danger',},
+    {title: 'Mark appointment as complete?',body:'Selecting \'yes\' will change the status to \'Completed\'.',type:'success',},
+  ]
+  let resp = await waitForConfirm(prompts[status].title,
+    prompts[status].body
+  ,prompts[status].type,[
+    {label:'Yes',data:true},
+    {label:'No',data:false},
+  ],3000);
+  if(!resp) {
+    alertResult.value = null
+    return
+  }
+
   modal.value.open = false;
   axios.post('appointments/changeStatus?id='+id,null,{status:status}).then(res=>{
     if(!res.data.success) return;
+    alertResult.value = null
     appointments.value[appointments.value.findIndex(el=>el.book_appointment_id == id)].book_appointment_status = status
   })
 }
@@ -91,6 +146,10 @@ function fetchCount(){
   })
 }
 
+function dismissAlert(e){
+  styledAlert.value.show=false
+}
+
 function parseJSON(mix){
   let schedule = {
     'Schedule ID' : mix.book_schedule_id,
@@ -111,11 +170,25 @@ function parseJSON(mix){
 </script>
 
 <template>
+  
+  <StyledAlert
+      :header="styledAlert.header"
+      :body="styledAlert.body"
+      :buttons="styledAlert.buttons"
+      :type="styledAlert.type"
+      :duration="styledAlert.duration"
+      :show="styledAlert.show"
+      @dismiss="e=>dismissAlert(e)"
+      @onResult="e=>alertResult=e"
+  />
+
   <div id="modal_parent" class="transition w-screen h-screen fixed top-0 left-0" style="background: rgb(0,0,0,0.3);" :class="(modal.open) ? '' : 'opacity-0'" :style="modal.open ? 'z-index:999' :'z-index:-10'">
-    <div id="modal_box" class=" absolute max-w-[500px]  bg-white top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] rounded-md overflow-auto w-10/12" v-if="modal.open">
+    <div id="modal_box" class=" absolute max-w-[600px]  bg-white top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] rounded-md overflow-auto w-10/12" v-if="modal.open">
       <div id="modal_header" class="p-5 bg-gray-900 rounded-md rounded-b-none text-white grid min-w-[400px]" style="grid-template-columns: 1fr 30px;">
         <h2 class="font-bold">View Appointment</h2>
-        <button class="transition hover:scale-105 active:scale-95" @click="modal.open = false;">&#10006;</button>
+        <button class="bg-white rounded-full w-[25px] h-[25px] flex justify-center items-center transition hover:scale-105 active:scale-95" @click="modal.open = false">
+              <i v-html="icons.close" class="text-gray-900"></i>
+          </button>
       </div>
         <div id="modal_body" class="p-5 min-w-[400px]" @submit.prevent="saveChanges" style="max-height: 70vh;">
           <h2 class="text-lg font-bold text-gray-800 mb-2">Schedule Details</h2>
@@ -134,7 +207,7 @@ function parseJSON(mix){
 
             <tr v-for="f,i in parseJSON(modal.info).appointment" :key="i" class="border-b" v-show="!f.id.includes('pwid=scheduler')">
               <td class="font-bold text-gray-800 border-b p-1">{{ f.label.replaceAll('_',' ') }}</td>
-              <td class="border-b p-1">{{ [0,'','undefined',null,undefined].includes(f.value) ? '-' : f.value }}</td>
+              <td class="border-b p-1" v-html="[0,'','undefined',null,undefined].includes(f.value) ? '-' : typeof f.value == 'string' ? f.value.replaceAll('\n','<br>') : f.value"></td>
             </tr>
 
             <tr>
@@ -143,9 +216,9 @@ function parseJSON(mix){
             </tr>
           </table>
           <div class="flex justify-end my-5">
-            <button v-if="[0,2,'0','2'].includes(modal.info.book_appointment_status)" class="transition flex gap-2 items-end rounded-md w-[100px] text-white bg-green-700 mx-[4px] p-1.5 text-base hover:scale-105 active:scale-95" @click="changeStatus(modal.info.book_appointment_id,1,modal.info.id)"><i class="text-base w-[20px] h-[20px] object-contain" v-html="icons.thumbsUp" ></i> Approve</button>
-            <button v-if="[0,1,'0','1'].includes(modal.info.book_appointment_status)" class="transition flex gap-2 items-center rounded-md w-[80px] text-white bg-red-700 mx-[2px] p-1.5 text-base hover:scale-105 active:scale-95" @click="changeStatus(modal.info.book_appointment_id,2,modal.info.id)"><i class="text-base w-[20px] h-[20px] object-contain mt-1" v-html="icons.thumbsDown" ></i> Deny</button>
-            <button v-if="[0,1,'0','1'].includes(modal.info.book_appointment_status)" class="transition flex gap-2 items-center rounded-md w-[120px] text-white bg-teal-700 mx-[2px] p-1.5 text-base hover:scale-105 active:scale-95" @click="changeStatus(modal.info.book_appointment_id,3,modal.info.id)"><i class="text-base mt-1 w-[20px] h-[20px] object-contain" v-html="icons.check" ></i> Completed</button>
+            <button v-if="[0,'0'].includes(modal.info.book_appointment_status)" class="transition flex gap-2 items-end rounded-md w-[100px] text-white bg-green-700 mx-[4px] p-1.5 text-base hover:scale-105 active:scale-95" @click="changeStatus(modal.info.book_appointment_id,1,modal.info.id)"><i class="text-base w-[20px] h-[20px] object-contain" v-html="icons.thumbsUp" ></i> Approve</button>
+            <button v-if="[0,'0',1,'1'].includes(modal.info.book_appointment_status)" class="transition flex gap-2 items-center rounded-md w-[80px] text-white bg-red-700 mx-[2px] p-1.5 text-base hover:scale-105 active:scale-95" @click="changeStatus(modal.info.book_appointment_id,2,modal.info.id)"><i class="text-base w-[20px] h-[20px] object-contain mt-1" v-html="icons.thumbsDown" ></i> Deny</button>
+            <button v-if="[1, '1'].includes(modal.info.book_appointment_status)" class="transition flex gap-2 items-center rounded-md w-[120px] text-white bg-teal-700 mx-[2px] p-1.5 text-base hover:scale-105 active:scale-95" @click="changeStatus(modal.info.book_appointment_id,3,modal.info.id)"><i class="text-base mt-1 w-[20px] h-[20px] object-contain" v-html="icons.check" ></i> Completed</button>
           </div>
           
         </div>
@@ -175,9 +248,9 @@ function parseJSON(mix){
             @onResult="e=>fetchSettings.orderBy = e"
             :values="[
               {label:'Date Received',value:'book_appointment_id'},
-              {label:'Scheduled Date',value:'book_schedule_date,book_schedule_timestart'},
-              {label:'Service',value:'book_appointment_servicesname'},
-              {label:'Status',value:'book_appointment_status'},
+              {label:'Scheduled Date',value: 'DATE(`book_schedule_date`) %orderdir%, `book_schedule_timestart` %orderdir%'},
+              {label: 'Service',value: 'book_appointment_servicesname'},
+              {label: 'Status',value: 'book_appointment_status'},
             ]"
           />
           <CustomField
@@ -229,6 +302,7 @@ function parseJSON(mix){
          > 0">Location</td>
          <td class="font-bold p-2">Date</td>
         <td class="font-bold p-2">Time</td>
+        <td class="font-bold p-2">Name</td>
         <td class="font-bold p-2">Status</td>
         <td class="font-bold p-2">Action</td>
       </tr>
@@ -237,14 +311,15 @@ function parseJSON(mix){
          > 0"> {{ [0,null,'undefined',''].includes(a.book_appointment_servicesname) ? '-' : a.book_appointment_servicesname }}</td>
         <td class="p-2" v-if="locations
          > 0"> {{ [0,null,'undefined',''].includes(a.book_appointment_locationname) ? '-' : a.book_appointment_locationname }}</td>
-         <td>{{dateFormat('%sm %d, %y',a.book_schedule_date)}}</td>
+         <td>{{dateFormat('%w - %sm %d, %y',a.book_schedule_date)}}</td>
         <td>{{dateFormat('%h:%I %a','2022-01-01 '+a.book_schedule_timestart)}} - {{dateFormat('%h:%I %a','2022-01-01 '+a.book_schedule_timeend)}}</td>
+        <td class="overflow-hidden whitespace-nowrap text-ellipsis max-w-[300px]">{{a.book_appointment_name}}</td>
         <td>{{['Pending', 'Approved', 'Denied','Completed'][a.book_appointment_status]}}</td>
         <td class="flex items-center h-full p-2">
-          <button v-if="[0,2,'0','2'].includes(a.book_appointment_status)" @click="changeStatus(a.book_appointment_id,1)" class="transition rounded-md text-white bg-green-700 mx-[2px] p-1 w-[27px] h-[27px] text-base hover:scale-105 active:scale-95"><i class="text-base" v-html="icons.thumbsUp"></i></button>
-          <button v-if="[0,1,'0','1'].includes(a.book_appointment_status)" @click="changeStatus(a.book_appointment_id,2)" class="transition rounded-md text-white bg-red-700 mx-[2px] p-1 w-[27px] h-[27px] text-base hover:scale-105 active:scale-95"><i class="text-base" v-html="icons.thumbsDown"></i></button>
-          <button v-if="[0,1,'0','1'].includes(a.book_appointment_status)" @click="changeStatus(a.book_appointment_id,3)" class="transition rounded-md text-white bg-teal-700 mx-[2px] p-1 w-[27px] h-[27px] text-base hover:scale-105 active:scale-95"><i class="text-base" v-html="icons.check"></i></button>
-          <button class="transition rounded-md text-white bg-gray-700 mx-[2px] p-1 w-[27px] h-[27px] text-base hover:scale-105 active:scale-95" @click="modal.info = a;modal.open= true;"><i class="text-base" v-html="icons.eye" ></i></button>
+          <button v-if="[0,'0'].includes(a.book_appointment_status)" @click="changeStatus(a.book_appointment_id,1)" class="transition rounded-md text-white bg-green-700 mx-[2px] p-1 w-[27px] h-[27px] text-base hover:scale-105 active:scale-95"><div class="tooltip-hover"><Tooltip message="Approve appointment" /></div><i class="text-base" v-html="icons.thumbsUp"></i></button>
+          <button v-if="[0,'0',1,'1'].includes(a.book_appointment_status)" @click="changeStatus(a.book_appointment_id,2)" class="transition rounded-md text-white bg-red-700 mx-[2px] p-1 w-[27px] h-[27px] text-base hover:scale-105 active:scale-95"><div class="tooltip-hover"><Tooltip message="Deny appointment" /></div><i class="text-base" v-html="icons.thumbsDown"></i></button>
+          <button v-if="[1,'1'].includes(a.book_appointment_status)" @click="changeStatus(a.book_appointment_id,3)" class="transition rounded-md text-white bg-teal-700 mx-[2px] p-1 w-[27px] h-[27px] text-base hover:scale-105 active:scale-95"><div class="tooltip-hover"><Tooltip message="Mark as Complete" /></div><i class="text-base" v-html="icons.check"></i></button>
+          <button class="transition rounded-md text-white bg-gray-700 mx-[2px] p-1 w-[27px] h-[27px] text-base hover:scale-105 active:scale-95" @click="modal.info = a;modal.open= true;"><div class="tooltip-hover"><Tooltip message="View" /></div><i class="text-base" v-html="icons.eye" ></i></button>
         </td>
       </tr>
     </table>
@@ -260,3 +335,10 @@ function parseJSON(mix){
     
   </MasterLayoutVue>
 </template>
+
+
+<style>
+.tooltip-hover{display: none;}
+:hover > .tooltip-hover{display: block;}
+
+</style>

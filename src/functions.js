@@ -133,60 +133,166 @@ function formatDateString(dateString) {
     return newString;
 }
 
-function dateFormat(format='',dateString=''){
-    let date = (dateString != '') ? new Date(dateString) : new Date();
-    if(format=='') {
-        console.error('%cFunction.js[dateformat()]:%c format parameter is empty','font-weight:700','font-weight:400');
-        return;
-    }
-    let M = date.toLocaleString('en-US',{month:'2-digit'});
-    let m = date.toLocaleString('en-US',{month:'numeric'});
-    let lm = date.toLocaleString('en-US',{month:'long'});
-    let sm = date.toLocaleString('en-US',{month:'long'}).substring(0,3);
-    let d = date.toLocaleString('en-US',{day:'numeric'});
-    let D = date.toLocaleString('en-US',{day:'2-digit'});
-    let y = date.toLocaleString('en-US',{year:'numeric'});
-    let msdate = (dateString != '') ? new Date(dateString) : new Date();
-    let getMinuteAndSeconds = msdate.toLocaleTimeString('en-US',{hour12:false,hour:  "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-    })
-    let array_getMinuteAndSeconds = getMinuteAndSeconds.split(':')
-    let getMinuteAndSeconds2 = msdate.toLocaleTimeString('en-US',{hour12:true,hour:  "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-    })
-    let array_getMinuteAndSeconds2 = getMinuteAndSeconds2.split(':')
-    let h1 = date.toLocaleTimeString('en-US',{hour12:true,hour:'numeric'}).replace(/( AM)|( PM)/g,'');
-    let h = array_getMinuteAndSeconds2[0];
-    let H1 = date.toLocaleTimeString('en-US',{hour12:false,hour:'numeric'}).replace(/( AM)|( PM)/g,'');
-    let H = array_getMinuteAndSeconds[0];
-    let i = date.toLocaleTimeString('en-US',{minute:'numeric'});
-    let I = array_getMinuteAndSeconds[1];
-    let s = date.toLocaleString('en-US',{second:'numeric'});
-    let S = array_getMinuteAndSeconds[2];
-    let a = date.toLocaleString('en-US',{hour12:true,hour:'numeric'}).replace(/[0-9]+ /g,'').toLowerCase();
-    let A = date.toLocaleString('en-US',{hour12:true,hour:'numeric'}).replace(/[0-9]+ /g,'');
+const timezoneOffset = -300
 
-    format = format.replace(/%M/g,M);
-    format = format.replace(/%m/g,m);
-    format = format.replace(/%lm/g,lm);
-    format = format.replace(/%sm/g,sm);
-    format = format.replace(/%d/g,d);
-    format = format.replace(/%D/g,D);
-    format = format.replace(/%y/g,y);
-    format = format.replace(/%h1/g,h1); //legacy
-    format = format.replace(/%H1/g,H1); //legacy
-    format = format.replace(/%h/g,h);
-    format = format.replace(/%H/g,H);
-    format = format.replace(/%i/g,i);
-    format = format.replace(/%I/g,I);
-    format = format.replace(/%s/g,s);
-    format = format.replace(/%S/g,S);
-    format = format.replace(/%A/g,A);
-    format = format.replace(/%a/g,a);
-    return format;
+// for keeping the timeformat regardless of UTC
+function dateFormat(format='',dateString=''){
+    if(typeof dateString == 'string' && dateString.match(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/g) != null) dateString += ' 00:00:00'
+    let date = (dateString != '') ? new Date(dateString) : new Date()
+    date.setUTCMinutes(date.getUTCMinutes() + (date.getTimezoneOffset() * -1))
+    const options = {
+        timeZone: 'UTC',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    }
+
+    const options2 = {
+        timeZone: 'UTC',
+        month: 'numeric',
+        day: 'numeric',
+        hour12: true,
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+    }
+
+    const dateTime = date.toLocaleString('en-US', options)
+    const [M, D, y, H, I, S] = dateTime.split(/[/:,\s]/).filter(el=>el != "" && el != null)
+    const dateTime2 = date.toLocaleString('en-US', options2)
+    const [m, d, h1, i, s,A] = dateTime2.split(/[/:,\s]/).filter(el=>el != "" && el != null)
+    let lm = date.toLocaleString('en-US',{month:'long'})
+    let sm = lm.substring(0,3)
+    let a = A.toLowerCase()
+
+    let h = date.toLocaleTimeString('en-US',{timeZone: 'UTC',hour12:true,hour:'2-digit'}).replace(/( AM)|( PM)/g,'')
+    let H1 = date.toLocaleTimeString('en-US',{timeZone: 'UTC',hour12:false,hour:'numeric'}).replace(/( AM)|( PM)/g,'')
+    let daysOfWeek = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+
+    const replacements = [
+        { pattern: /%M/g, value: M },
+        { pattern: /%m/g, value: m },
+        { pattern: /%lm/g, value: lm },
+        { pattern: /%sm/g, value: sm },
+        { pattern: /%d/g, value: d },
+        { pattern: /%D/g, value: D },
+        { pattern: /%y/g, value: y },
+        { pattern: /%h1/g, value: h1 },
+        { pattern: /%H1/g, value: H1 },
+        { pattern: /%h/g, value: h },
+        { pattern: /%H/g, value: H },
+        { pattern: /%i/g, value: i },
+        { pattern: /%I/g, value: I },
+        { pattern: /%s/g, value: s },
+        { pattern: /%S/g, value: S },
+        { pattern: /%A/g, value: A },
+        { pattern: /%a/g, value: a },
+        { pattern: /%w/g, value: daysOfWeek[date.getUTCDay()] },
+        { pattern: /%sw/g, value: daysOfWeek[date.getUTCDay()].substring(0,3) }
+    ]
+    
+    for (const { pattern, value } of replacements) 
+        format = format.replace(pattern, value)
+    
+
+    return format
 }
+
+// for formatting the time with offset
+function dateFormatTimezone(format='',dateString=''){
+    if(typeof dateString == 'string' && dateString.match(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/g) != null) dateString += ' 00:00:00'
+    let date = (dateString != '') ? dateOffseted(dateString) : dateOffseted()
+
+    const options = {
+        timeZone: 'UTC',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    }
+
+    const options2 = {
+        timeZone: 'UTC',
+        month: 'numeric',
+        day: 'numeric',
+        hour12: true,
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+    }
+
+    const dateTime = date.toLocaleString('en-US', options)
+    const [M, D, y, H, I, S] = dateTime.split(/[/:,\s]/).filter(el=>el != "" && el != null)
+    const dateTime2 = date.toLocaleString('en-US', options2)
+    const [m, d, h1, i, s,A] = dateTime2.split(/[/:,\s]/).filter(el=>el != "" && el != null)
+    let lm = date.toLocaleString('en-US',{month:'long'})
+    let sm = lm.substring(0,3)
+    let a = A.toLowerCase()
+
+    let h = date.toLocaleTimeString('en-US',{timeZone: 'UTC',hour12:true,hour:'2-digit'}).replace(/( AM)|( PM)/g,'')
+    let H1 = date.toLocaleTimeString('en-US',{timeZone: 'UTC',hour12:false,hour:'numeric'}).replace(/( AM)|( PM)/g,'')
+
+    const replacements = [
+        { pattern: /%M/g, value: M },
+        { pattern: /%m/g, value: m },
+        { pattern: /%lm/g, value: lm },
+        { pattern: /%sm/g, value: sm },
+        { pattern: /%d/g, value: d },
+        { pattern: /%D/g, value: D },
+        { pattern: /%y/g, value: y },
+        { pattern: /%h1/g, value: h1 },
+        { pattern: /%H1/g, value: H1 },
+        { pattern: /%h/g, value: h },
+        { pattern: /%H/g, value: H },
+        { pattern: /%i/g, value: i },
+        { pattern: /%I/g, value: I },
+        { pattern: /%s/g, value: s },
+        { pattern: /%S/g, value: S },
+        { pattern: /%A/g, value: A },
+        { pattern: /%a/g, value: a }
+    ]
+    
+    for (const { pattern, value } of replacements) 
+        format = format.replace(pattern, value)
+    
+
+    return format
+}
+
+// allows time querying to always follow UTC regardless of timezone, useful for interactiveness
+function dateAdjusted(yearOrDateString=null,month=null,day=null){
+    let date 
+
+    if(yearOrDateString == null) date = new Date()
+    else if(month != null) date = new Date(yearOrDateString,month,day)
+    else date = new Date(yearOrDateString)
+    date.setTime(date.getTime() + date.getTimezoneOffset() * 60000)
+    return date
+}
+
+// for assuring that regardless of user timezone, the validation will always follow the timezone of the app
+function dateOffseted(yearOrDateString=null,month=null,day=null){
+    let date;
+
+    if (yearOrDateString == null) date = new Date();
+    else if (month != null) date = new Date(yearOrDateString, month, day);
+    else date = new Date(yearOrDateString);
+    date = new Date(date.toLocaleString('en-US',{timeZone:'UTC'}))
+
+    // Adjust the date based on the provided timezone offset
+    const timezoneOffsetMilliseconds = (timezoneOffset < 0 ? timezoneOffset + 60 : timezoneOffset) * 60000
+    date.setTime(date.getTime() + timezoneOffsetMilliseconds)
+    
+    return date;
+}
+
+
+
 
 class Axios{
     constructor(baseUrl,defHeaders) {
@@ -232,10 +338,11 @@ const apiURLs = {
     localhost: window.location.protocol+'//localhost/pw-bookingapp/api/',
     network: window.location.protocol+'//ns.proweaver.host/pw-bookingapp/api/',
     launched: window.location.protocol+'//'+window.location.hostname+'/pw-bookingapp/api/',
+    capoe: 'https://www.capoecounselingllc.com/pw-bookingapp/api/'
 }
 
 
-const axios = new Axios(apiURLs.network,{pwauth:'TWxBUUJPbUdPM1g5NDJxUm5Ncnp6UnlrZ2xRSlJyeXcvQ0RGNDVVYTRKMUprK0tPZjFrV3IrdHZrbkYvci9saGtQRGF5NnZmWEZveVl3TjNSYjVEUmc9PTo6OPee3c+XRvB5vpYEn0QVbg'});
+const axios = new Axios(apiURLs.launched,{pwauth:'TWxBUUJPbUdPM1g5NDJxUm5Ncnp6UnlrZ2xRSlJyeXcvQ0RGNDVVYTRKMUprK0tPZjFrV3IrdHZrbkYvci9saGtQRGF5NnZmWEZveVl3TjNSYjVEUmc9PTo6OPee3c+XRvB5vpYEn0QVbg'});
 
 function elementLoad(selector) {
     return new Promise(resolve=>{
@@ -411,6 +518,9 @@ function waitForCondition(condition, interval = 1000) {
 export{
     validateForm,
     dateFormat,
+    dateFormatTimezone,
+    dateAdjusted,
+    dateOffseted,
     formatDateString,
     axios,
     elementLoad,

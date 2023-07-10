@@ -176,8 +176,9 @@ function editField(){
 
         field.useemail = true;
     }
+    
 
-    if(['checkbox-group','radio-group','select'].includes(field.type)){
+    if(['checkbox-group','radio-group','select','datalist'].includes(field.type)){
       let flag = false;
       field.values.forEach(el=>{
         if(typeof el.label != 'string') el.label = el.label.toString();
@@ -185,10 +186,22 @@ function editField(){
         if(el.label == '') 
           flag = true;
 
-        if(el.value == '' && field.type != 'select')
+        if(el.value == '' && field.type != 'select' && field.type != 'datalist')
           flag = true;
       })
       if(flag){alert('Some values under options are empty!');return;}
+
+      console.log(field.alphOnSave)
+
+      if(['select','datalist'].includes(field.type) && field.alphOnSave == true){
+        field.values = field.values.sort((a,b)=>{
+          let aLabel = a.label.toLowerCase()
+          let bLabel = b.label.toLowerCase()
+          if (aLabel < bLabel) return -1
+          if (aLabel > bLabel) return 1;
+          return 0
+        })
+      }
     }
   }
 
@@ -322,11 +335,7 @@ function cancelEdit(){
           @onResult="e=>{queField.text = e;}"
         />
       </div>
-
-      
-
-
-      <div class="p-3 rounded-b-lg" v-if="!['field','text'].includes(queField.content_type) && currentPage.page_columns > 1">
+      <div class="p-3 rounded-b-lg pb-0">
         <label v-if="currentPage.page_columns > 1" for="pwfb-editfield-column" class="mt-2 mb-1 block">Column Placement</label>
         <CustomField
           v-if="currentPage.page_columns > 1"
@@ -341,8 +350,14 @@ function cancelEdit(){
           ]"
           @onResult="e=>{queField.column = e;}"
         />
+      </div>
+
+
+
+      <div class="p-3 rounded-b-lg" v-if="!['field','text'].includes(queField.content_type) && currentPage.page_columns > 1">
+        
         <div class="flex justify-end w-[max-content] ml-auto gap-1 mt-4">
-          <button @click="editField" class="bg-green-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Edit Field</button>
+          <button @click="editField" class="bg-green-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Save</button>
           <button @click="queField=null" class="bg-red-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Cancel</button>
         </div>
       </div>
@@ -366,6 +381,7 @@ function cancelEdit(){
             {label:'Checkbox Group',value:'checkbox-group'},
             {label:'Radio Group',value:'radio-group'},
             {label:'Select',value:'select'},
+            {label:'Input Select',value:'datalist'},
             {label:'Multi-line Text',value:'textarea'},
             {label:'PayPal',value:'paypal'},
           ]"
@@ -408,10 +424,10 @@ function cancelEdit(){
           :value="queField.options.paypal_value"
           @onResult="e=>{queField.options.paypal_value = e;}"
         />
-        <label v-if="['text','integer','number','telephone','email','textarea'].includes(queField.type)"
+        <label v-if="['text','integer','number','telephone','email','textarea','datalist'].includes(queField.type)"
         for="pwfb-editfield-label" class="mt-2 mb-1 block">Placeholder</label>
         <CustomField
-          v-if="['text','integer','number','telephone','email','textarea'].includes(queField.type)"
+          v-if="['text','integer','number','telephone','email','textarea','datalist'].includes(queField.type)"
           name="pwfb-editfield-placeholder"
           type="text"
           placeholder="Tooltip to help your users what to input"
@@ -425,27 +441,18 @@ function cancelEdit(){
           name="pwfb-editfield-grid"
           type="radio-group"
           :value="queField.grid"
-          columns="1fr 1fr 1fr"
+          columns="1fr 1fr 1fr 1fr"
           :values="[
             {label:'1',value:'1fr'},
             {label:'2',value:'1fr 1fr'},
             {label:'3',value:'1fr 1fr 1fr'},
+            {label:'4',value:'1fr 1fr 1fr 1fr'},
+            {label:'5',value:'1fr 1fr 1fr 1fr 1fr'},
+            {label:'6',value:'1fr 1fr 1fr 1fr 1fr 1fr'},
+            {label:'7',value:'1fr 1fr 1fr 1fr 1fr 1fr 1fr'},
+            {label:'8',value:'1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr'},
           ]"
           @onResult="e=>{queField.grid = e;}"
-        />
-        <label v-if="currentPage.page_columns > 1" for="pwfb-editfield-column" class="mt-2 mb-1 block">Column Placement</label>
-        <CustomField
-          v-if="currentPage.page_columns > 1"
-          name="pwfb-editfield-column"
-          type="radio-group"
-          placeholder="Tooltip to help your users what to input"
-          columns="1fr 1fr"
-          :value="queField.column"
-          :values="[
-            {label:1,value:1},
-            {label:2,value:2}
-          ]"
-          @onResult="e=>{queField.column = e;}"
         />
         <label v-if="queField.type == 'checkbox-group'" for="pwfb-editfield-maxchecks" class="mt-2 mb-1 block">Max no. of checks</label>
         <CustomField
@@ -485,12 +492,19 @@ function cancelEdit(){
           />
           <label for="pwfb-editfield-useemail" class="mt-2 mb-1 block">Use this email to notify user about the status of their booking?</label>
         </div>
+
+        <div v-if="['select','datalist'].includes(queField.type)" class="flex items-center gap-2 mt-2">
+          <input type="checkbox" :checked="queField.alphOnSave" @click="queField.alphOnSave = !queField.alphOnSave">
+          <label for="pwfb-editfield-label" class="mt-2 mb-1 block"
+          >Alphabetize On Save?</label>
+        </div>
+        
         
         <label for="pwfb-editfield-required" class="mt-3 mb-1 block"
-          v-if="['checkbox-group','radio-group','select'].includes(queField.type)"
+          v-if="['checkbox-group','radio-group','select','datalist'].includes(queField.type)"
         >Field Options</label>
         <div id="pwfb-editfield-valueslist" class=""
-          v-if="['checkbox-group','radio-group','select'].includes(queField.type)"
+          v-if="['checkbox-group','radio-group','select','datalist'].includes(queField.type)"
         >
           <div v-for="qfv,i in queField.values" :key="i" :style="{gridTemplateColumns:'1fr 1fr 30px'}" class="grid mb-1">
             <CustomField
@@ -550,7 +564,7 @@ function cancelEdit(){
         
 
         <div class="flex justify-end w-[max-content] ml-auto gap-1 mt-4">
-          <button @click="editField" class="bg-green-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Edit Field</button>
+          <button @click="editField" class="bg-green-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Save</button>
           <button @click="queField=null" class="bg-red-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Cancel</button>
         </div>
       </div>
@@ -573,7 +587,7 @@ function cancelEdit(){
         />
         
         <div class="flex justify-end w-[max-content] ml-auto gap-1 mt-4">
-          <button @click="editField" class="bg-green-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Edit Field</button>
+          <button @click="editField" class="bg-green-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Save</button>
           <button @click="queField=null" class="bg-red-800 text-white p-2 rounded-md block transition hover:scale-105 active:scale-95">Cancel</button>
         </div>
       </div>
@@ -804,7 +818,7 @@ function cancelEdit(){
           <button class="transition bg-red-700 text-white p-2 rounded-md hover:scale-105 active:scale-95 mr-2" @click="cancelCSSChanges">Cancel</button>
           <button class="transition bg-red-900 text-white p-2 rounded-md mr-2 hover:scale-105 active:scale-95" @click="discardCustomCSS">Discard Custom CSS</button>
         </div>
-        <form-view v-if="!formRefresh" class="" :form="JSON.parse(JSON.stringify(form))" :page="currentPageIndex"></form-view>
+        <form-view v-if="!formRefresh" :form="JSON.parse(JSON.stringify(form))" :page="currentPageIndex"></form-view>
       </div> <!-- builder form view -->
     </div>
   </div>

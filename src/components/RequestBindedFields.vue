@@ -10,11 +10,24 @@ let props = defineProps({
 });
 let emit = defineEmits(['onResult','onEmpty','onResultInfo']);
 let selectedValue = ref('')
+let displayValue = ref('')
 let selectedValueInfo = ref(null)
 let values = ref([]);
 let name = ref(props.endpoint.split('/')[0])
 
+watch(()=>props.value,()=>{
+    let index = values.value.findIndex(el=>el[props.based] == props.value)
+    if(index < 0){
+        displayValue.value = ' - Please Select - '
+        emit('onResult','')
+        return
+    }
+    displayValue.value = values.value[index][props.based]
+    selectedValue.value = values.value[index][props.based]
+})
+
 watch(()=>selectedValue.value,()=>{
+    displayValue.value = selectedValue.value
     emit('onResult',selectedValue.value)
     emit('onResultInfo',values.value.filter(el=>el[props.based] == selectedValue.value)[0])
 })
@@ -37,9 +50,10 @@ onMounted(()=>{
         }
 
         values.value = res.data.result
+
         if(['',null].includes(props.value)) {
-            selectedValue.value = values.value[0][props.based];
-            selectedValueInfo.value = values.value[0];
+            displayValue.value = ' - Please Select - '
+            emit('onResult','')
         }
         else {
             selectedValue.value = props.value
@@ -50,8 +64,15 @@ onMounted(()=>{
 });
 
 function selectThis(v){
+    if(v == null) {
+        displayValue.value = ' - Please Select - '
+        emit('onResult','')
+        return
+    }
+    
     if(props.readonly) return;
     selectedValue.value = v[props.based];
+    displayValue.value = v[props.based]
     selectedValueInfo.value = v
 }
 
@@ -59,9 +80,13 @@ function selectThis(v){
 
 <template>
     <div class="pwfvf-rbfields-select" :class="'pwfvf-rbfields-select-'+name"  v-if="type == 'select'" @click="closeAllOpenSelects" :data-pwfvf="name">
-        <span v-html="selectedValue"></span>
+        <span v-html="displayValue"></span>
         <i class="pwfvf-rbfields-select-caret-down">&#9660;</i>
         <div class="pwfvf-rbfields-select-menu">
+            <div :class="{active:selectedValue == ''}" class="pwfvf-rbfields-select-option" @click="selectThis(null)">
+                - Please Select -
+            </div>
+
             <div :class="{active:selectedValue == v[props.based]}" class="pwfvf-rbfields-select-option" v-for="v,i in values" :key="i" @click="selectThis(v)">
                 {{v[props.based]}}
             </div>
