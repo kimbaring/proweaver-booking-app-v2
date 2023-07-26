@@ -862,6 +862,40 @@ function effectsToggler(conditionText,effects,evaluation){
                     <span>{{progressIndex > i ? '&check;' : i+1}}</span>
                     {{ p.page_title }}
                 </div>
+
+                <div class="pwfv-holidays">
+                    <h2>Federal Holidays 2023</h2>
+                    <div class="pwfv-holidays-table">
+                        <div>Date</div>
+                        <div>Federal holiday</div>
+                        <div>January 1, 2023</div>
+                        <div>New Year's Day</div>
+                        <div>January 2, 2023</div>
+                        <div>New Year's Day (observed)</div>
+                        <div>January 16, 2023 </div>
+                        <div>Martin Luther King Day</div>
+                        <div>February 20, 2023 </div>
+                        <div>Presidents' Day</div>
+                        <div>May 29, 2023</div>
+                        <div>Memorial Day</div>
+                        <div>June 19, 2023</div>
+                        <div>Juneteenth</div>
+                        <div>July 4, 2023</div>
+                        <div>Independence Day</div>
+                        <div>September 4, 2023 </div>
+                        <div>Labor Day</div>
+                        <div>October 9, 2023</div>
+                        <div>Columbus Day</div>
+                        <div>November 10, 2023</div>
+                        <div>Veterans Day (observed)</div>
+                        <div>November 11, 2023</div>
+                        <div>Veterans Day</div>
+                        <div>November 23, 2023</div>
+                        <div>Thanksgiving Day</div>
+                        <div>December 25, 2023</div>
+                        <div>Christmas Day</div>
+                    </div>
+                </div>
             </div>
             <div class="pwfv-maingrid " :class="{'two-cols':currentPage.page_columns == 2}">
                 <p class="pwfv-required-reminder" v-if="currentPageRequired.length > 0">Required Fields are marked with (*)</p>
@@ -1047,5 +1081,7 @@ function effectsToggler(conditionText,effects,evaluation){
     </div>
 </template>
 <style scoped>
+
+
 
 </style>

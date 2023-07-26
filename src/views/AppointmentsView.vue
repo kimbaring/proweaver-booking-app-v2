@@ -311,7 +311,7 @@ function parseJSON(mix){
          > 0"> {{ [0,null,'undefined',''].includes(a.book_appointment_servicesname) ? '-' : a.book_appointment_servicesname }}</td>
         <td class="p-2" v-if="locations
          > 0"> {{ [0,null,'undefined',''].includes(a.book_appointment_locationname) ? '-' : a.book_appointment_locationname }}</td>
-         <td>{{dateFormat('%w - %sm %d, %y',a.book_schedule_date)}}</td>
+         <td>{{dateFormat('%w - %sm %d, %y',a.book_schedule_date)}} </td>
         <td>{{dateFormat('%h:%I %a','2022-01-01 '+a.book_schedule_timestart)}} - {{dateFormat('%h:%I %a','2022-01-01 '+a.book_schedule_timeend)}}</td>
         <td class="overflow-hidden whitespace-nowrap text-ellipsis max-w-[300px]">{{a.book_appointment_name}}</td>
         <td>{{['Pending', 'Approved', 'Denied','Completed'][a.book_appointment_status]}}</td>

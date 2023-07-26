@@ -1,22 +1,27 @@
 <script setup>
 import { RouterView, useRouter } from 'vue-router'
-import { onMounted } from 'vue'
-import { lStore,delayExec } from './functions'
+import { onMounted, ref } from 'vue'
+import { lStore } from './functions'
+import { getUTCTime } from './DateTime'
 
+let utcLoaded = ref(false)
+let router = useRouter()
 
-onMounted( ()=>{
+onMounted( async ()=>{
+  await getUTCTime()
+  utcLoaded.value = true
   let path = window.location.pathname.replace('/pw-bookingapp','')
   path = path.replace('/admin','')
   if(path == '/form') return;
-  if(path == '/login' && lStore.token != null) useRouter().replace('/scheduler')
-  if((path != '/login') && lStore.token == null) useRouter().replace('/login')
+  if(path == '/login' && lStore.token != null) router.replace('/scheduler')
+  if((path != '/login') && lStore.token == null) router.replace('/login')
 });
 
 
 </script>
 
 <template>
-  <RouterView />
+  <RouterView v-if="utcLoaded" />
 </template>
 
 <style scoped>
