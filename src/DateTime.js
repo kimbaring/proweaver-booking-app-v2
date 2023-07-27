@@ -9,7 +9,9 @@ export async function getUTCTime (){
     UTCObj = res.data
     UTCObj.datetime_easy = UTCObj.utc_datetime.replace('T',' ').replace('Z','')
                         .match(/[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}/g)[0]
-    UTCObj.clientOffset = new Date().getTime() - new Date(UTCObj.datetime_easy).getTime()
+    UTCObj.clientOffset = Date.now() - new Date(UTCObj.datetime_easy).getTime()
+
+    UTCObj.clientOffset = Math.round(UTCObj.clientOffset / 60000) * 60000
 }
  
 export default class DateFunc{
@@ -40,11 +42,13 @@ export default class DateFunc{
     setSeconds(seconds){ return this.dateObj.setSeconds(seconds)} 
     setTime(time){ return this.dateObj.setTime(time)} 
 
+    entries = []
+
     constructor(yearOrDateString=null,month=null,day=null,hours=0,minutes=0,seconds=0){
+        this.entries = [yearOrDateString,month,day,hours,minutes,seconds]
         if(yearOrDateString == null || yearOrDateString == '') {
             this.yearOrDateString = yearOrDateString
             this.dateObj = new Date()
-            this.dateObj.setTime(this.dateObj.getTime() + UTCObj.clientOffset)
         }
         else if(month != null){
             this.dateObj = new Date(yearOrDateString,month,day,hours,minutes,seconds)
@@ -52,10 +56,13 @@ export default class DateFunc{
         }
             
         else {
+            if(typeof yearOrDateString == 'string') yearOrDateString = yearOrDateString.trim()
             if(
                 typeof yearOrDateString == 'string' &&
-                (yearOrDateString.match(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/g) ||
-                yearOrDateString.match(/^[0-9]{2}-[0-9]{2}-[0-9]{4}$/g))
+                (
+                    yearOrDateString.match(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/g) ||
+                    yearOrDateString.match(/^[0-9]{2}-[0-9]{2}-[0-9]{4}$/g)
+                )
             ){
                 yearOrDateString = yearOrDateString.replace(/-00-/g,'-01-')
                 
@@ -66,24 +73,52 @@ export default class DateFunc{
             this.yearOrDateString = yearOrDateString
         }
 
-        this.dateObj.setTime(this.dateObj.getTime() + UTCObj.clientOffset)
     }
 
-    client(){
-        this.offsetMS = UTCObj.clientOffset
+    utc(){
+        let [yearOrDateString,month,day,hours,minutes,seconds] = this.entries
+        if(yearOrDateString == null || yearOrDateString == '') {
+            this.yearOrDateString = yearOrDateString
+            this.dateObj = new Date()
+        }
+        else if(month != null){
+            this.dateObj = new Date(yearOrDateString,month,day,hours,minutes,seconds)
+            this.yearOrDateString = yearOrDateString
+        }
+            
+        else {
+            if(typeof yearOrDateString == 'string') yearOrDateString = yearOrDateString.trim()
+            if(
+                typeof yearOrDateString == 'string' &&
+                (
+                    yearOrDateString.match(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/g) ||
+                    yearOrDateString.match(/^[0-9]{2}-[0-9]{2}-[0-9]{4}$/g)
+                )
+            ){
+                yearOrDateString = yearOrDateString.replace(/-00-/g,'-01-')
+                
+                yearOrDateString+=' 00:00:00'
+            }
+
+            this.dateObj = new Date(yearOrDateString)
+            this.yearOrDateString = yearOrDateString
+        }
+
         this.dateObj.setTime(this.dateObj.getTime() - UTCObj.clientOffset)
         return this
     }
 
     offset(){
+        this.utc()
         const timeOffset = (timeZoneOffset*60*1000)
         this.offsetMS = timeOffset
-        this.dateObj.setTime(this.dateObj.getTime() - timeOffset)
+        this.dateObj.setTime(this.dateObj.getTime() + timeOffset)
         return this
     }
 
     format(format){
-        const dateTime = this.dateObj.toISOString().replace('T',' ').match(/[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}/g)[0]
+        const dater = new Date(this.dateObj.getTime() + UTCObj.clientOffset)
+        const dateTime = dater.toISOString().replace('T',' ').match(/[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}/g)[0]
         const monthsOfTheYear = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
         const monthsOfTheYearFull = ['January','February','March','April','May','June','July','August','September','October','November','December']
         let [y, m2, D, H, M, S] = dateTime.split(/[/:,\s-]/).filter(el=>el != "" && el != null)
@@ -126,8 +161,8 @@ export default class DateFunc{
             { pattern: /%S/g, value: S },
             { pattern: /%A/g, value: A },
             { pattern: /%a/g, value: a },
-            { pattern: /%w/g, value: daysOfWeek[this.dateObj.getUTCDay()] },
-            { pattern: /%sw/g, value: daysOfWeek[this.dateObj.getUTCDay()].substring(0,3) }
+            { pattern: /%w/g, value: daysOfWeek[dater.getUTCDay()] },
+            { pattern: /%sw/g, value: daysOfWeek[dater.getUTCDay()].substring(0,3) }
         ]
         
         for (const { pattern, value } of replacements) 
@@ -139,4 +174,3 @@ export default class DateFunc{
         return format
     }
 }
-

@@ -149,7 +149,7 @@ function dateFormatTimezone(format='',dateString=''){
 
 // allows time querying to always follow UTC regardless of timezone, useful for interactiveness
 function dateAdjusted(yearOrDateString=null,month=null,day=null){
-    return new DateFunc(yearOrDateString,month,day).client().dateObj
+    return new DateFunc(yearOrDateString,month,day).dateObj
 }
 
 // for assuring that regardless of user timezone, the validation will always follow the timezone of the app

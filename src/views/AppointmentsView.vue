@@ -7,6 +7,7 @@ import CustomField from '../components/SchedulerComps/CustomField.vue'
 import AppointmentsCalendar from '../components/AppointmentsCalendar.vue'
 import Tooltip from "../components/Tooltip.vue";
 import StyledAlert from '../components/SchedulerComps/StyledAlert.vue';
+import DateFunc from "../DateTime";
 
 let locations = ref(0)
 let services = ref(0)
@@ -154,8 +155,8 @@ function parseJSON(mix){
   let schedule = {
     'Schedule ID' : mix.book_schedule_id,
     'Date' : dateFormat('%lm %d, %y',mix.book_schedule_date),
-    'From' : dateFormat('%h:%I %a','2022-01-01 '+mix.book_schedule_timestart),
-    'To' : dateFormat('%h:%I %a','2022-01-01 '+mix.book_schedule_timeend),
+    'From' : dateFormat('%h:%I %a',mix.book_schedule_date+' '+mix.book_schedule_timestart),
+    'To' : dateFormat('%h:%I %a',mix.book_schedule_date+' '+mix.book_schedule_timeend),
     'Description' : mix.book_schedule_description ?? '-',
   };
 
@@ -311,8 +312,8 @@ function parseJSON(mix){
          > 0"> {{ [0,null,'undefined',''].includes(a.book_appointment_servicesname) ? '-' : a.book_appointment_servicesname }}</td>
         <td class="p-2" v-if="locations
          > 0"> {{ [0,null,'undefined',''].includes(a.book_appointment_locationname) ? '-' : a.book_appointment_locationname }}</td>
-         <td>{{dateFormat('%w - %sm %d, %y',a.book_schedule_date)}} </td>
-        <td>{{dateFormat('%h:%I %a','2022-01-01 '+a.book_schedule_timestart)}} - {{dateFormat('%h:%I %a','2022-01-01 '+a.book_schedule_timeend)}}</td>
+         <td>{{dateFormat('%w - %sm %d, %y',a.book_schedule_date)}}</td>
+        <td>{{dateFormat('%h:%I %a',a.book_schedule_date+' '+a.book_schedule_timestart)}} - {{dateFormat('%h:%I %a',a.book_schedule_date+' '+a.book_schedule_timeend)}}</td>
         <td class="overflow-hidden whitespace-nowrap text-ellipsis max-w-[300px]">{{a.book_appointment_name}}</td>
         <td>{{['Pending', 'Approved', 'Denied','Completed'][a.book_appointment_status]}}</td>
         <td class="flex items-center h-full p-2">

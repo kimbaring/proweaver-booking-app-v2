@@ -1,6 +1,7 @@
 <script>
 import {axios, dateFormat,dateAdjusted,dateOffseted} from '../functions'
 import StyledAlertVue from './SchedulerV2/StyledAlert.vue'
+import DateFunc from '../DateTime'
 
 export default{
     emits:['onResult','onFetch','selectedService'],
@@ -53,14 +54,17 @@ export default{
         }
     },
     async mounted(){
+        // setInterval(()=>{
+        //     // console.log(new DateFunc().client().dateObj)
+        // },1000)
         this.service = this.serviceSelect
-        let date = this.dateAdjusted();
-        this.cc.y = date.getFullYear();
-        this.cc.m = date.getMonth();
-        this.cc.d = date.getDate();
-        this.qd.y = date.getFullYear();
-        this.qd.m = date.getMonth();
-        this.qd.d = date.getDate();
+        let date = this.dateTime().dateObj;
+        this.cc.y = date.getUTCFullYear();
+        this.cc.m = date.getUTCMonth();
+        this.cc.d = date.getUTCDate();
+        this.qd.y = date.getUTCFullYear();
+        this.qd.m = date.getUTCMonth();
+        this.qd.d = date.getUTCDate();
         
         this.buildCalendar()
         
@@ -96,6 +100,9 @@ export default{
     },
     methods:{
         dateFormat,
+        dateTime(yearOrDateString=null,month=null,day=null,hours=0,minutes=0,seconds=0){
+            return new DateFunc(yearOrDateString,month,day,hours,minutes,seconds)
+        },
         dateAdjusted,
         dateOffseted,
         alertNotif(header,body,type,buttons=[],duration=2000){
@@ -115,7 +122,7 @@ export default{
         },
         selectSchedule(sched){
             if(
-                new Date(sched.book_schedule_date+' '+sched.book_schedule_timestart).getTime() <=
+                this.dateTime(sched.book_schedule_date+' '+sched.book_schedule_timestart).dateObj.getTime() <=
                 this.dateOffseted().getTime()
             ){
                 this.alertNotif('Schedule Done','You cannot select a finished schedule!','danger')
@@ -152,7 +159,7 @@ export default{
         async fetchScheds(){
             if(this.fetching) return;
             this.fetching = true;
-            let date = new Date(this.qd.y,this.qd.m,this.qd.d);
+            let date = dateAdjusted(this.qd.y,this.qd.m,this.qd.d);
             this.availDates = [];
             let includeService = (this.service != '' && this.service != null) ? '&service='+this.service : ''
             let res = await axios.post(`schedules/availableSchedulesWithinMonth?month=${this.cc.m+1}&year=${this.cc.y}${includeService}`,'default');
@@ -178,7 +185,7 @@ export default{
             }
             
             this.availableSchedules.sort((a,b)=>{
-                return this.dateAdjusted('2022-01-01'+' '+a.book_schedule_timestart).getTime() - this.dateAdjusted('2022-01-01'+' '+b.book_schedule_timestart).getTime()
+                return this.dateAdjusted(a.book_schedule_date+' '+a.book_schedule_timestart).getTime() - this.dateAdjusted(a.book_schedule_date+' '+b.book_schedule_timestart).getTime()
             })
             this.fetching = false;
 
@@ -203,6 +210,7 @@ export default{
                     onclick:async (dateString)=>{
                         if(this.fetching) return;
                         let date = this.dateAdjusted(dateString);
+                        console.log(dateString)
                         this.qd.y = date.getFullYear();
                         this.qd.m = date.getMonth();
                         this.qd.d = date.getDate();
@@ -230,7 +238,7 @@ export default{
                             if(this.value != null) this.selectedSchedule = this.value;
                         }
                         this.availableSchedules.sort((a,b)=>{
-                            return this.dateAdjusted('2022-01-01'+' '+a.book_schedule_timestart).getTime() - this.dateAdjusted('2022-01-01'+' '+b.book_schedule_timestart).getTime()
+                            return this.dateAdjusted(a.book_schedule_date   +' '+a.book_schedule_timestart).getTime() - this.dateAdjusted(a.book_schedule_date +' '+b.book_schedule_timestart).getTime()
                         })
                         this.fetching = false;
                     }
@@ -296,7 +304,7 @@ export default{
             <div class="pwfvf-scheduler-availscheds-item" v-for="asc in availableSchedules" @click="selectSchedule(asc)" :class="{active:chosenSchedule == asc.book_schedule_id}" v-show="asc.conflicts == 0">
                 <h2>{{ asc.book_schedule_service }}
                     <span v-if="(asc.conflicts > 0 || asc.is_full ) && asc.book_schedule_special_status == 0">Booked</span>
-                    <span v-if="new Date(asc.book_schedule_date+' '+asc.book_schedule_timestart).getTime() <=
+                    <span v-if="dateTime(asc.book_schedule_date+' '+asc.book_schedule_timestart).dateObj.getTime() <=
                 dateOffseted().getTime() && asc.book_schedule_special_status == 0">Done</span>
                 <span v-if=" asc.book_schedule_special_status != 0">{{ ['None','Reserved','Closed'][asc.book_schedule_special_status] }}</span>
                     <!-- <span v-if="this.dateAdjusted(asc.book_schedule_date+' '+asc.book_schedule_timestart).getTime() <=

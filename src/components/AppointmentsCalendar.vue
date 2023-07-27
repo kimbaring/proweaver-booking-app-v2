@@ -312,8 +312,8 @@ function parseJSON(mix){
   let schedule = {
     'Schedule ID' : mix.id,
     'Date' : dateFormat('%lm %d, %y',mix.shift_date),
-    'From' : dateFormat('%h:%I %a','2022-01-01 '+mix.shift_start),
-    'To' : dateFormat('%h:%I %a','2022-01-01 '+mix.shift_end),
+    'From' : dateFormat('%h:%I %a',mix.shift_date+' '+mix.shift_start),
+    'To' : dateFormat('%h:%I %a',mix.shift_date+' '+mix.shift_end),
     'Description' : ['',null].includes(mix.description) ? '-' : mix.description,
   };
 
