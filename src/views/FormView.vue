@@ -1,12 +1,13 @@
 <script setup>
 import {onMounted, ref,watch,computed,reactive} from 'vue'
-import {axios,waitForCondition,dateFormat,dateFormatTimezone} from '../functions'
+import {axios,waitForCondition,dateFormat,dateFormatTimezone, elementLoad} from '../functions'
 import TemplatedFields from '../components/TemplatedFields.vue'
 import {formData,formCSS} from '../defaults'
 import icons,{iconsSolid} from '../assets/icons'
 import SchedulerSelect from '../components/SchedulerSelect.vue'
 import RequestBindedFields from '../components/RequestBindedFields.vue'
 import PayPalButtons from '../components/PayPalButtons.vue'
+import ProweaverForms from '../components/ProweaverForms.vue'
 import { Paypal } from '../functions'
 import StyledAlertVue from '../components/SchedulerV2/StyledAlert.vue'
 
@@ -75,6 +76,11 @@ let styledAlert = reactive({
     duration:2000,
     show:false
 })
+let onlinePayment = reactive({
+    opened: false,
+    active:false,
+    trans_id: ''
+})
 
 
 let allFields = computed(()=>{
@@ -122,9 +128,23 @@ let currentRequiredFields = computed(()=>{
 
 
 
+
 watch(()=>currentPageIndex.value,()=>{
     currentPageRequiredLabels.value = [];
-    setCurrentPageRequired();
+    setCurrentPageRequired()
+
+    elementLoad('#online_payment').then(el=>{
+        el.onclick = ()=>{
+            onlinePayment.opened = true
+        }
+    })
+
+    if(onlinePayment.trans_id != ''){
+        allFields.value['ll2fs3gs-0.h5j1ryr6az'].required = false
+        allFields.value['ll2fs3gs-0.h5j1ryr6az'].hidden = true
+        allFields.value['ll2pjm04-0.fhn8mzlt3k'].styles = 'background:#bbf7d0;color:#064e3b;font-weight:bold;text-align:center;padding:5px 10px;margin:20px 0;'
+    }
+
 })
 
 
@@ -304,6 +324,7 @@ function organizeInput(f,e){
         return
     }
     f.value = e
+    
 
     if(form.value.declare.nameIndex == f.id){
         indexFieldVals.value.name = e
@@ -313,6 +334,10 @@ function organizeInput(f,e){
 
     if(f.content_type == 'field' && f.type == 'email' && (f.useemail === 'true' || f.useemail === true) && !['',null].includes(e)){
         userReceiver = e;
+    }
+
+    if(f.id == 'll2fs3gs-0.h5j1ryr6az' && e == 'Yes'){
+        onlinePayment.opened = true
     }
 
     function formatInput(type,value){
@@ -427,9 +452,16 @@ onMounted(async ()=>{
 
     // end of conditional effects
 
+    elementLoad('#online_payment').then(el=>{
+        el.onclick = ()=>{
+            onlinePayment.opened = true
+        }
+    })
+
 
     return;
 })
+
 
 
 function beforePageChange(add,jumpTo=null){
@@ -503,10 +535,26 @@ function submit(){
         return
     }
 
-    // if(grecaptcha.getResponse().length == 0){
-    //     alert('Please complete the reCAPTCHA!')
-    //     return;
-    // }
+    if(allFields.value['ll2fs3gs-0.h5j1ryr6az'].value == 'Yes' && onlinePayment.trans_id == ''){
+        alertNotif('Online Payment Required', 'Please complete the payment to continue. Or you may close this window and select No to `Pay Ahead of Time    `','danger')
+        isSubmitting.value = false;
+        return
+    }
+
+    
+    if(onlinePayment.trans_id != ''){
+        userInput.value.push({
+            id: 'll2fs3gs-0.h5j1ryr6az',
+            label: 'Payment Option Is Available. Would you like to pay ahead of Time?',
+            value: 'Yes'
+        })
+        
+        userInput.value.push({
+            id: 'transaction-0.payment',
+            label: 'Payment Transaction ID',
+            value: onlinePayment.trans_id
+        });
+    }
     
     axios.post('appointments/create',null,{
         form_receivers: JSON.stringify(form.value.declare.notifEmails),
@@ -529,6 +577,7 @@ function submit(){
         isSubmitting.value = false
         formSubmitted.value = true;
 
+        window.location.reload()
     });
 }
 
@@ -839,8 +888,17 @@ function effectsToggler(conditionText,effects,evaluation){
     }
 }
 
+function hideClickHere(){
+    if(document.getElementById('online_payment') != null) {document.getElementById('online_payment').style.display = 'none';}
+}
+
 </script>
 <template>
+<ProweaverForms v-if="onlinePayment.opened && onlinePayment.trans_id == ''" :onclose="()=>{onlinePayment.opened = false}" :onsuccess="transId=>{
+    onlinePayment.trans_id = transId;
+    onlinePayment.active = true;
+    hideClickHere()
+}"/>
 <StyledAlertVue
     :header="styledAlert.header"
     :body="styledAlert.body"
@@ -1066,7 +1124,13 @@ function effectsToggler(conditionText,effects,evaluation){
                         <div id="recaptcha" v-show="currentPageIndex == form.pages.length -1" class="g-recaptcha" :data-sitekey="siteKey"></div>
                     </div>
                     <button @click="beforePageChange(-1)" v-if="currentPageIndex != 0"><i v-html="icons.arrowLeft"></i> Prev</button>
-                    <button @click="beforePageChange(1)" v-if="currentPageIndex != form.pages.length -1">Next <i v-html="icons.arrowRight"></i></button>
+                    <button @click="beforePageChange(1)" v-if="currentPageIndex != form.pages.length -1">
+
+                        <span v-if="currentPageIndex == 0" style="font-size: inherit;">Click Here To Book Your Appointment With Dr. Cecil Poe</span>
+                        <span v-else style="font-size: inherit;">Next</span>
+
+                         <i v-if="currentPageIndex != 0" v-html="icons.arrowRight"></i>
+                    </button>
                     <button @click="submit()" :disabled="isSubmitting" v-if="currentPageIndex == form.pages.length -1 " class="pwfv-submit">Submit</button>
                 </div>
             </div>

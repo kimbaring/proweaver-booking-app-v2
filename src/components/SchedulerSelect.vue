@@ -210,7 +210,6 @@ export default{
                     onclick:async (dateString)=>{
                         if(this.fetching) return;
                         let date = this.dateAdjusted(dateString);
-                        console.log(dateString)
                         this.qd.y = date.getFullYear();
                         this.qd.m = date.getMonth();
                         this.qd.d = date.getDate();

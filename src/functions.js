@@ -29,7 +29,7 @@ function validateForm(obj,rules) {
             obj[r] == undefined || obj[r] == '' ) {
                 validated[r] = true;  
         } else if (r != 'callback') {
-            let emailregex = /[a-z0-9._]+@[a-z]+\.[a-z]{2,3}/i;
+            let emailregex = /[a-z0-9._]+@[a-z]+\.[a-z]{2,}/i;
             let intregex = /[0-9]+/;
             let floatregex = /[0-9]+.[0-9]+/;
 
