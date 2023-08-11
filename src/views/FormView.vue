@@ -910,7 +910,7 @@ function hideClickHere(){
     @onResult="e=>alertResult=e"
 />
 
-   <div id="pwfv-parent" ref="formElement" v-if="form != null" data-responsive="">
+   <div id="pwfv-parent" ref="formElement" v-if="form != null" data-responsive="" :data-page-index="currentPageIndex">
         <div class="pwfv-header">
             {{ form.form_title }} 
         </div>
