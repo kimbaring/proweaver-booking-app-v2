@@ -135,15 +135,30 @@ watch(()=>currentPageIndex.value,()=>{
 
     elementLoad('#online_payment').then(el=>{
         el.onclick = ()=>{
-            onlinePayment.opened = true
+            // onlinePayment.opened = true
+            window.open(`${window.location.protocol}//${window.location.hostname}?page_id=425`)
         }
     })
 
-    if(onlinePayment.trans_id != ''){
-        allFields.value['ll2fs3gs-0.h5j1ryr6az'].required = false
-        allFields.value['ll2fs3gs-0.h5j1ryr6az'].hidden = true
-        allFields.value['ll2pjm04-0.fhn8mzlt3k'].styles = 'background:#bbf7d0;color:#064e3b;font-weight:bold;text-align:center;padding:5px 10px;margin:20px 0;'
-    }
+    elementLoad('#online_payment_zelle').then(el=>{
+        el.onclick = ()=>{
+            let tooltip = document.getElementById('online_payment_zelle_tooltip')
+            if(tooltip.classList.contains('shown')) tooltip.classList.remove('shown')
+            else tooltip.classList.add('shown')
+        }
+    })
+
+    elementLoad('#pwfv-first-next-button').then(el=>{
+        el.onclick = ()=>{
+            beforePageChange(1)
+        }
+    })
+
+    // if(onlinePayment.trans_id != ''){
+    //     allFields.value['ll2fs3gs-0.h5j1ryr6az'].required = false
+    //     allFields.value['ll2fs3gs-0.h5j1ryr6az'].hidden = true
+    //     allFields.value['ll2pjm04-0.fhn8mzlt3k'].styles = 'background:#bbf7d0;color:#064e3b;font-weight:bold;text-align:center;padding:5px 10px;margin:20px 0;'
+    // }
 
 })
 
@@ -336,9 +351,9 @@ function organizeInput(f,e){
         userReceiver = e;
     }
 
-    if(f.id == 'll2fs3gs-0.h5j1ryr6az' && e == 'Yes'){
-        onlinePayment.opened = true
-    }
+    // if(f.id == 'll2fs3gs-0.h5j1ryr6az' && e == 'Yes'){
+    //     onlinePayment.opened = true
+    // }
 
     function formatInput(type,value){
         if(value == '' || value == null) return value
@@ -452,16 +467,28 @@ onMounted(async ()=>{
 
     // end of conditional effects
 
-    elementLoad('#online_payment').then(el=>{
+    elementLoad('#pwfv-first-next-button').then(el=>{
         el.onclick = ()=>{
-            onlinePayment.opened = true
+            beforePageChange(1)
         }
     })
 
+    elementLoad('#online_payment').then(el=>{
+        el.onclick = ()=>{
+            window.open(`${window.location.protocol}//${window.location.hostname}?page_id=425`)
+        }
+    })
+    
+    elementLoad('#online_payment_zelle').then(el=>{
+        el.onclick = ()=>{
+            let tooltip = document.getElementById('online_payment_zelle_tooltip')
+            if(tooltip.classList.contains('shown')) tooltip.classList.remove('shown')
+            else tooltip.classList.add('shown')
+        }
+    })
 
     return;
 })
-
 
 
 function beforePageChange(add,jumpTo=null){
@@ -494,6 +521,11 @@ function beforePageChange(add,jumpTo=null){
     }
 
     if(currentPageRequiredInvalids.value.length){
+        if(currentPageIndex.value == 0 && add != null){
+            elementLoad('#pwfv-booking-steps').then(el=>{
+                el.classList.add('shown')
+            })
+        }
         return
     }
 
@@ -535,26 +567,21 @@ function submit(){
         return
     }
 
-    if(allFields.value['ll2fs3gs-0.h5j1ryr6az'].value == 'Yes' && onlinePayment.trans_id == ''){
-        alertNotif('Online Payment Required', 'Please complete the payment to continue. Or you may close this window and select No to `Pay Ahead of Time    `','danger')
-        isSubmitting.value = false;
-        return
-    }
+    // if(allFields.value['ll2fs3gs-0.h5j1ryr6az'].value == 'Yes' && onlinePayment.trans_id == ''){
+    //     alertNotif('Online Paymennt Required', 'Please complete the payment to continue. Or you may close this window and select No to `Pay Ahead of Time    `','danger')
+    //     isSubmitting.value = false;
+    //     return
+    // }
 
     
-    if(onlinePayment.trans_id != ''){
-        userInput.value.push({
-            id: 'll2fs3gs-0.h5j1ryr6az',
-            label: 'Payment Option Is Available. Would you like to pay ahead of Time?',
-            value: 'Yes'
-        })
+    // if(onlinePayment.trans_id != ''){
         
-        userInput.value.push({
-            id: 'transaction-0.payment',
-            label: 'Payment Transaction ID',
-            value: onlinePayment.trans_id
-        });
-    }
+    //     userInput.value.push({
+    //         id: 'transaction-0.payment',
+    //         label: 'Payment Transaction ID',
+    //         value: onlinePayment.trans_id
+    //     });
+    // }
     
     axios.post('appointments/create',null,{
         form_receivers: JSON.stringify(form.value.declare.notifEmails),
@@ -1132,6 +1159,17 @@ function hideClickHere(){
                          <i v-if="currentPageIndex != 0" v-html="icons.arrowRight"></i>
                     </button>
                     <button @click="submit()" :disabled="isSubmitting" v-if="currentPageIndex == form.pages.length -1 " class="pwfv-submit">Submit</button>
+                    <div id="pwfv-booking-steps" v-if="currentPageIndex == 0">
+                        The following easy steps are required secure your Appointment with Dr. Cecil Poe : 
+                        <ul>
+                            <li>Step 1. Move your mouse to the bottom left where you can see the Calendar. Then select the appointment Date and Time</li>
+                            <li>Step 2. Move your mouse to the bottom right, please select Appointment Type by clicking the dropdown menu for Telehealth or In-person</li>
+                            <li>Step 3. Please select the Service that you needed help with Dr. Cecil Poe</li>
+                            <li>Step 4. Please click the Red Button to Proceed</li>
+                            <li>Step 5. Please provide your Contact Details</li>
+                            <li>Step 6. Then click the blue button "Submit" to book.</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>

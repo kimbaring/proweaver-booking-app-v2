@@ -196,8 +196,6 @@ class Axios{
         params = {...params,...opts};
         return axiosA(params);
     }
-
-    
 }
 
 const apiURLs = {
