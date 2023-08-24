@@ -376,6 +376,22 @@ function waitForCondition(condition, interval = 1000) {
     });
 }
     
+function debounce(func, delay) {
+    let timeoutId;
+  
+    return new Promise((resolve, reject) => {
+    clearTimeout(timeoutId);
+
+    timeoutId = setTimeout(async () => {
+        try {
+        const result = await func.apply(this, args);
+        resolve(result);
+        } catch (error) {
+        reject(error);
+        }
+    }, delay);
+    });
+  }
   
   
 
@@ -392,5 +408,6 @@ export{
     Paypal,
     delayExec,
     hexToHsl,
-    waitForCondition
+    waitForCondition,
+    debounce
 }

@@ -1,6 +1,6 @@
 <script setup>
 import {onMounted, ref,watch,computed,reactive} from 'vue'
-import {axios,waitForCondition,dateFormat,dateFormatTimezone, elementLoad} from '../functions'
+import {axios,waitForCondition,dateFormat,dateFormatTimezone, elementLoad,debounce} from '../functions'
 import TemplatedFields from '../components/TemplatedFields.vue'
 import {formData,formCSS} from '../defaults'
 import icons,{iconsSolid} from '../assets/icons'
@@ -636,6 +636,8 @@ async function checkResponsive(){
                 window.parent.document.getElementById('pwform').style.overflow='hidden' 
                 window.parent.document.getElementById('pwform').style.border='none' 
                 window.parent.document.getElementById('pwform').style.height=(document.body.offsetHeight < 500) ? 500 : document.body.offsetHeight+'px'
+
+                
             }).observe(document.body)
         }
         
@@ -651,6 +653,33 @@ async function checkResponsive(){
     }
     responsiveClasser();
 }
+
+function reactivateButtons(){
+    elementLoad('#online_payment').then(el=>{
+        el.onclick = ()=>{
+            // onlinePayment.opened = true
+            window.open(`${window.location.protocol}//${window.location.hostname}?page_id=425`)
+        }
+    })
+
+    elementLoad('#online_payment_zelle').then(el=>{
+        el.onclick = ()=>{
+            let tooltip = document.getElementById('online_payment_zelle_tooltip')
+            if(tooltip.classList.contains('shown')) tooltip.classList.remove('shown')
+            else tooltip.classList.add('shown')
+        }
+    })
+
+    elementLoad('#pwfv-first-next-button').then(el=>{
+        el.onclick = ()=>{
+            beforePageChange(1)
+        }
+    })
+}
+
+window.addEventListener('resize', () => {
+    reactivateButtons()
+})
 
 function fetchingSchedules(e){
     let index = currentPage.value.page_fields.findIndex(el=>el.content_type == 'rbfield' && el.endpoint.includes('services'))
