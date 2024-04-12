@@ -206,7 +206,7 @@ const apiURLs = {
 }
 
 
-const axios = new Axios(apiURLs.capoe,{pwauth:'TWxBUUJPbUdPM1g5NDJxUm5Ncnp6UnlrZ2xRSlJyeXcvQ0RGNDVVYTRKMUprK0tPZjFrV3IrdHZrbkYvci9saGtQRGF5NnZmWEZveVl3TjNSYjVEUmc9PTo6OPee3c+XRvB5vpYEn0QVbg'});
+const axios = new Axios(import.meta.env.VITE_APIURL,{pwauth:'TWxBUUJPbUdPM1g5NDJxUm5Ncnp6UnlrZ2xRSlJyeXcvQ0RGNDVVYTRKMUprK0tPZjFrV3IrdHZrbkYvci9saGtQRGF5NnZmWEZveVl3TjNSYjVEUmc9PTo6OPee3c+XRvB5vpYEn0QVbg'});
 
 function elementLoad(selector) {
     return new Promise(resolve=>{
@@ -286,8 +286,14 @@ class PaypalIntegration{
                             return;
                         }
                     },
-                    onApprove: async () => {
-                        res(true);
+                    onApprove: async (data,actions) => {
+                        const orderID = data.orderID;
+                        const captureID = await actions.order.capture();
+                        // // You can now use orderID and captureID as needed
+                        console.log("Order ID:", orderID);
+                        console.log("Capture ID:", captureID);
+                        // Do whatever you want with the IDs here
+                        res(orderID, captureID);
                     },
                     onError: err => {
                         rej(err);

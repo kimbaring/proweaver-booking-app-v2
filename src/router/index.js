@@ -45,7 +45,7 @@ const router = createRouter({
     {
       path: '/test',
       name: 'test',
-      component: ()=> import('../components/Tooltip.vue')
+      component: ()=> import('../views/TestView.vue')
     },
     {
       path: '/print',

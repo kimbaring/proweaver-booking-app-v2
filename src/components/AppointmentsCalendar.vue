@@ -3,7 +3,6 @@
         <!-- top controls -->
         <h2 class="text-3xl font-bold text-center mb-3">{{ dateFormat('%lm',dateAdjusted(cc.y,cc.m,cc.d).getTime()) }}
             <span class="text-[#936520]">{{ dateFormat('%y',dateAdjusted(cc.y,cc.m,cc.d).getTime()) }}</span>
-            CAPOE, LLC
         </h2>
 
         <div class="flex gap-2 w-full items-center mb-10 justify-center">
@@ -17,7 +16,7 @@
 
 
         <!-- calendar view -->
-        <div class="grid border-dashed border-gray-400 border" style="grid-template-columns: 40px 1fr 1fr 1fr 1fr 1fr 40px;">
+        <div class="grid border-dashed border-gray-400 border" style="grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;">
             <div class="font-bold border-r border-dashed border-gray-400 px-1 py-1 text-sm">SUN</div>
             <div class="font-bold border-r border-dashed border-gray-400 px-2 py-1">MON</div>
             <div class="font-bold border-r border-dashed border-gray-400 px-2 py-1">TUE</div>

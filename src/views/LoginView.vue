@@ -4,6 +4,8 @@ import icons from '../assets/icons';
 import {axios, lStore} from '../functions'
 import router from '../router';
 
+const baseUrl = import.meta.env.VITE_BASEURL
+
 let showPassword = ref(false)
 let errorMsg = ref('')
 let fetching = ref('')
@@ -11,12 +13,6 @@ let userInput = ref({
   username:'',
   password:''
 })
-
-
-function link(url){
-    if(window.location.hostname == '127.0.0.1') return `${window.location.protocol}//${window.location.hostname}:${window.location.port}/pw-bookingapp/admin/`+url
-    else return `${window.location.protocol}//${window.location.hostname}/pw-bookingapp/admin/`+url
-}
 
 function submit() {
   errorMsg.value = ''
@@ -54,8 +50,7 @@ function submit() {
   <div id="login_cont" class="h-screen text-gray-800">
     <form @submit.prevent="submit" class="max-w-[500px] absolute w-full bg-white px-10 py-10 text-center rounded-lg shadow top-[50%] left-[50%] -translate-x-2/4 -translate-y-2/4">
       <h2 class="  text-xl mb-10">
-        <img :src="link('main-logo.png')" class="block mx-auto my-3 max-w-[250px]">
-        <p>Dr. Cecil Poe : Flexible Scheduling </p>
+        <img :src="baseUrl+'main-logo.png'" class="block mx-auto my-3 max-w-[250px]">
         <p>Admin Dashboard</p>
       </h2>
       <label class="shadow-md block  border-gray-300 bg-gray-100 mb-2 rounded-md overflow-hidden">

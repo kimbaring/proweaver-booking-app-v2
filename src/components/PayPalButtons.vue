@@ -47,9 +47,9 @@ function refreshPayPal(){
         refreshPayPalDiv.value = false;
         let payValue = fieldData.value.options.paypal_value
         
-        Paypal.mountOn('#pwfv-paypalparent',payValue,props.currency).then(res=>{
+        Paypal.mountOn('#pwfv-paypalparent',payValue,props.currency).then(orderId=>{
             let params = props.paymentFuncParams
-            props.paymentFunc(params[0],params[1],payValue,params[2])
+            props.paymentFunc(params[0],orderId,payValue)
         }).catch(err=>{
             console.assert('Paypal Error:',err)
         })

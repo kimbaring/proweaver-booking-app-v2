@@ -8,6 +8,7 @@ import icons from '../assets/icons'
 import CodeMirror from '../components/CodeMirror.vue'
 import {axios} from '../functions'
 import ConditionScriptor from '../components/ConditionScriptor.vue'
+import JSEffects from '@/components/JSEffects.vue'
 
 
 let form = ref(JSON.parse(JSON.stringify(formData)));
@@ -802,8 +803,10 @@ function cancelEdit(){
 
         <div class="bg-white p-5 mb-5 text-gray-800" v-if="modifyConditionalEffects"> 
           <h2 class="font-bold text-xl ">Conditional Effects <small class="font-normal italic ">(for developers only, proceed with caution)</small></h2>
-          <p class="mb-2">This area is at its experimental stage and uses text-based ruling which may require you to learn its proper syntax.</p>
-          <ConditionScriptor :form="form" @onInterpret="e =>form.conditionals = e"/>
+          <!-- <p class="mb-2">This area is at its experimental stage and uses text-based ruling which may require you to learn its proper syntax.</p> -->
+          <!-- <ConditionScriptor :form="form" @onInterpret="e =>form.conditionals = e"/> -->
+
+            <JSEffects :form="form" />
         </div>
 
         <div class="bg-white p-5 mb-5" v-if="modifyCSSMode">

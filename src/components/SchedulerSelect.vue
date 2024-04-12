@@ -130,7 +130,7 @@ export default{
             }
 
             if(sched.is_full){
-                this.alertNotif('Schedule Was Booked','Your chosen time slot Appointment with Dr. Cecil Poe is no longer available. Please make a selection for another time and date of the month, note that selections are based on "First response". Thank you!','danger')
+                this.alertNotif('Schedule Was Booked','Your chosen time slot appoinment is no longer available. Please make a selection for another time and date of the month, note that selections are based on "First response". Thank you!','danger')
                 return;
             }
 
@@ -140,7 +140,7 @@ export default{
             }
 
             if(sched.book_schedule_special_status == 2){
-                this.alertNotif('Schedule Unavailable: Office Closed','<strong>Dr. Cecil Poe</strong> is not in the office. Please make a selection for another time and date of the month, note that selections are based on "First Response". Thank you!','danger')
+                this.alertNotif('Schedule Unavailable: Office Closed','Please make a selection for another time and date of the month, note that selections are based on "First Response". Thank you!','danger')
                 return;
             }
 
@@ -300,9 +300,9 @@ export default{
         <div class="pwfvf-scheduler-availscheds">
             <div class="spinner" v-if="fetching"></div>
             <div class="pwfvf-scheduler-availscheds-empty" v-if="!fetching && availableSchedules.length == 0">No schedules for this date...</div>
-            <div class="pwfvf-scheduler-availscheds-item" v-for="asc in availableSchedules" @click="selectSchedule(asc)" :class="{active:chosenSchedule == asc.book_schedule_id}" v-show="asc.conflicts == 0">
+            <div class="pwfvf-scheduler-availscheds-item" v-for="asc in availableSchedules" @click="selectSchedule(asc)"   :key="asc.book_schedule_id" :class="{active:chosenSchedule == asc.book_schedule_id}">
                 <h2>{{ asc.book_schedule_service }}
-                    <span v-if="(asc.conflicts > 0 || asc.is_full ) && asc.book_schedule_special_status == 0">Booked</span>
+                    <span v-if="asc.is_full && asc.book_schedule_special_status == 0">Booked</span>
                     <span v-if="dateTime(asc.book_schedule_date+' '+asc.book_schedule_timestart).dateObj.getTime() <=
                 dateOffseted().getTime() && asc.book_schedule_special_status == 0">Done</span>
                 <span v-if=" asc.book_schedule_special_status != 0">{{ ['None','Reserved','Closed'][asc.book_schedule_special_status] }}</span>
@@ -313,7 +313,7 @@ export default{
                 {{ dateFormat('%h:%I%a',asc.book_schedule_date +' '+asc.book_schedule_timeend)}}</small>
             </div>
         </div>
-    </div><!--/scheduler parent -->
+    </div><!--/scheduler parent --> 
 </template>
 
 <style>

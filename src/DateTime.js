@@ -4,19 +4,8 @@ let UTCObj = {}
 const timeZoneOffset = -300
 
 
-// function getTimeAPI(protocol){
-//     return new Promise((resolve,reject)=>{
-//         axios.get(`${protocol}//capoecounselingllc.com/pw-bookingapp/datetime-curl.php`).then(res=>{
-//             resolve(res)
-//         })
-//         .catch(err=>{
-//             reject(reject)
-//         })
-//     })
-// }
-
 export async function getUTCTime (){
-    let res = await axios.get(`https://capoecounselingllc.com/pw-bookingapp/datetime-curl.php`)
+    let res = await axios.get(`${import.meta.env.VITE_APIURL}/datetime-curl.php`)
 
     UTCObj = res.data
     UTCObj.datetime_easy = UTCObj.utc_datetime.replace('T',' ').replace('Z','')

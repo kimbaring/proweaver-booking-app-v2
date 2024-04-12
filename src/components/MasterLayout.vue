@@ -3,6 +3,8 @@ import icons from '../assets/icons';
 import {ref} from 'vue';
 import { lStore } from '../functions'
 import router from '../router';
+
+const companyName = import.meta.env.VITE_COMPNAME
 let isSideBarOpened = ref(true);
 let modal = ref({
     open:false
@@ -21,7 +23,7 @@ function logout(){
     
     <div id="app-parent" class="flex content-start flex-wrap h-screen items-start">
         <header class="p-3 bg-gray-900 w-full flex items-center gap-5 text-white">
-            <h2 class="text-2xl font-bold text-white">Dr. Cecil Poe : Flexible Scheduling Admin Dashboard</h2>
+            <h2 class="text-2xl font-bold text-white">{{companyName}} | Booking App</h2>
             <button class="transition bg-gray-700 rounded-md hover:scale-105 active:scale-95" @click="isSideBarOpened = !isSideBarOpened">
                 <i class="block p-2" v-html="icons.menu2"></i>
             </button>

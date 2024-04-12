@@ -16,34 +16,26 @@ let props = defineProps({
     page:{default:0,type:Number}
 })
 
-let siteKey = ref('');
+let siteKey = ref(import.meta.env.VITE_SITEKEY);
 
-function baseurl(url){
-    if(window.location.hostname == '127.0.0.1') return `${window.location.protocol}//${window.location.hostname}:${window.location.port}/pw-bookingapp/admin/`;
-    else return `${window.location.protocol}//${window.location.hostname}/pw-bookingapp/admin/`;
-}
+let gRecaptchaOnExists =  setInterval(()=>{
+    if(document.querySelector('.g-recaptcha') == null) return;
 
-axios.get(baseurl()+'/constants.json').then(res=>{
-    siteKey.value = res.data.recaptcha_sitekey
-    let gRecaptchaOnExists =  setInterval(()=>{
-        if(document.querySelector('.g-recaptcha') == null) return;
-
-        try{
-            clearInterval(gRecaptchaOnExists);
-            grecaptcha.render("recaptcha", {
-                sitekey: siteKey.value,
-                callback: function() {}
-            });
-            
-            window.parent.document.getElementById('pwform').style.height=document.body.offsetHeight+'px' 
-        }catch(err){}
+    try{
+        clearInterval(gRecaptchaOnExists);
+        grecaptcha.render("recaptcha", {
+            sitekey: siteKey.value,
+            callback: function() {}
+        });
         
-        if(form.value.declare.paypalClientID != '' && form.value.declare.paypalClientID != null)
-            Paypal.init(form.value.declare.paypalClientID,form.value.declare.paypalCurrency,()=>{paypalLoaded.value = true},form.value.declare.paypalEmail)
+        window.parent.document.getElementById('pwform').style.height=document.body.offsetHeight+'px' 
+    }catch(err){}
+    
+    if(form.value.declare.paypalClientID != '' && form.value.declare.paypalClientID != null)
+        Paypal.init(form.value.declare.paypalClientID,form.value.declare.paypalCurrency,()=>{paypalLoaded.value = true},form.value.declare.paypalEmail)
 
 
-    },100)
-})
+},100)
 
 let form = ref(null)
 let currentPageIndex = ref(0)
@@ -236,8 +228,11 @@ function selectedService(e){
 
 }
 
-function paidPaypal(id,fieldLabel,fieldValue,f){
-    organizeInput(id,fieldLabel,fieldValue,f);
+function paidPaypal(f,fieldValue,value){
+    
+    organizeInput(f,fieldValue);
+    organizeInput({...f,id:f.id+'_value', label:f.label+' (Amount)'}, form.declare.paypalCurrency+' '+parseFloat(value).toFixed(2));
+
     if(f.options.paypal_value_basis != 'service-based') return;
     form.value.pages.forEach((el2,i)=>{
         let index = el2.page_fields.findIndex(el=>el.content_type == 'rbfield' && el.endpoint.includes('services'))
@@ -331,7 +326,6 @@ function alertNotif(header,body,type,buttons=[],duration=2000){
 }
 
 function organizeInput(f,e){
-    
     let index = userInput.value.findIndex(el=>el.id == f.id);
 
     if(f.id == 'default_services') {
@@ -593,7 +587,7 @@ function submit(){
         book_appointment_phone: indexFieldVals.value.phone,
         book_appointment_email : userReceiver,
         book_appointment_custominputs: JSON.stringify(userInput.value),
-        book_appointment_status: 1,
+        book_appointment_status: 0,
         book_appointment_created_at: dateFormatTimezone('%y-%M-%D %H:%I:%S'),
     }).then(res=>{
         if(res.data == null || !res.data.success){
@@ -976,47 +970,15 @@ function hideClickHere(){
                     <span>{{progressIndex > i ? '&check;' : i+1}}</span>
                     {{ p.page_title }}
                 </div>
-
-                <div class="pwfv-holidays">
-                    <h2>Federal Holidays 2023</h2>
-                    <div class="pwfv-holidays-table">
-                        <div>Date</div>
-                        <div>Federal holiday</div>
-                        <div>January 1, 2023</div>
-                        <div>New Year's Day</div>
-                        <div>January 2, 2023</div>
-                        <div>New Year's Day (observed)</div>
-                        <div>January 16, 2023 </div>
-                        <div>Martin Luther King Day</div>
-                        <div>February 20, 2023 </div>
-                        <div>Presidents' Day</div>
-                        <div>May 29, 2023</div>
-                        <div>Memorial Day</div>
-                        <div>June 19, 2023</div>
-                        <div>Juneteenth</div>
-                        <div>July 4, 2023</div>
-                        <div>Independence Day</div>
-                        <div>September 4, 2023 </div>
-                        <div>Labor Day</div>
-                        <div>October 9, 2023</div>
-                        <div>Columbus Day</div>
-                        <div>November 10, 2023</div>
-                        <div>Veterans Day (observed)</div>
-                        <div>November 11, 2023</div>
-                        <div>Veterans Day</div>
-                        <div>November 23, 2023</div>
-                        <div>Thanksgiving Day</div>
-                        <div>December 25, 2023</div>
-                        <div>Christmas Day</div>
-                    </div>
-                </div>
             </div>
             <div class="pwfv-maingrid " :class="{'two-cols':currentPage.page_columns == 2}">
                 <p class="pwfv-required-reminder" v-if="currentPageRequired.length > 0">Required Fields are marked with (*)</p>
                 <div class="pwfv-maingrid-1">
+                    
                     <div class="pwfv-fielditem" v-for="f,i in filteredByColumn(1)" v-show="f != null && (f.hidden == undefined || f.hidden == false)">
                         <!-- field renderer start-->
                         <!-- v-if="f != null && " -->
+                        
                         
                         <div v-if="f.content_type == 'rbfield' && !omittedRBFields.includes(f.id)">
                             
@@ -1078,13 +1040,14 @@ function hideClickHere(){
                             <label :for="f.name" class="pwfvf-checkbox-label">{{ f.label }} <span v-if="f.required">*</span></label>
                         </div>
                         <div v-if="f.content_type == 'field' && f.type == 'paypal' && !refreshPayPal">
+                            
                             <PayPalButtons
                                 :service="selectedServiceFromScheduler"
                                 :fieldData="JSON.parse(JSON.stringify(f))"
                                 :paid="getFieldValue(f.id)"
                                 :currency="form.declare.paypalCurrency"
                                 :paymentFunc="paidPaypal"
-                                :paymentFuncParams="[f.name,f.label,f]"
+                                :paymentFuncParams="[f]"
                                 @onEmpty="()=>deletePaypalAsPayment(f)"
                                 @onLoaded="()=>addPaypalAsPayment(f)"
                             />
@@ -1161,7 +1124,7 @@ function hideClickHere(){
                                 :paid="getFieldValue(f.id)"
                                 :currency="form.declare.paypalCurrency"
                                 :paymentFunc="paidPaypal"
-                                :paymentFuncParams="[f.name,f.label,f]"
+                                :paymentFuncParams="[f]"
                                 @onEmpty="()=>deletePaypalAsPayment(f)"
                                 @onLoaded="()=>addPaypalAsPayment(f)"
                             />
@@ -1181,24 +1144,11 @@ function hideClickHere(){
                     </div>
                     <button @click="beforePageChange(-1)" v-if="currentPageIndex != 0"><i v-html="icons.arrowLeft"></i> Prev</button>
                     <button @click="beforePageChange(1)" v-if="currentPageIndex != form.pages.length -1">
-
-                        <span v-if="currentPageIndex == 0" style="font-size: inherit;">Click Here To Book Your Appointment With Dr. Cecil Poe</span>
-                        <span v-else style="font-size: inherit;">Next</span>
+                        <span style="font-size: inherit;">Next</span>
 
                          <i v-if="currentPageIndex != 0" v-html="icons.arrowRight"></i>
                     </button>
                     <button @click="submit()" :disabled="isSubmitting" v-if="currentPageIndex == form.pages.length -1 " class="pwfv-submit">Submit</button>
-                    <div id="pwfv-booking-steps" v-if="currentPageIndex == 0">
-                        The following easy steps are required secure your Appointment with Dr. Cecil Poe : 
-                        <ul>
-                            <li>Step 1. Move your mouse to the bottom left where you can see the Calendar. Then select the appointment Date and Time</li>
-                            <li>Step 2. Move your mouse to the bottom right, please select Appointment Type by clicking the dropdown menu for Telehealth or In-person</li>
-                            <li>Step 3. Please select the Service that you needed help with Dr. Cecil Poe</li>
-                            <li>Step 4. Please click the Red Button to Proceed</li>
-                            <li>Step 5. Please provide your Contact Details</li>
-                            <li>Step 6. Then click the blue button "Submit" to book.</li>
-                        </ul>
-                    </div>
                 </div>
             </div>
         </div>

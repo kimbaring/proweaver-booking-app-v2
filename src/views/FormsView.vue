@@ -17,8 +17,8 @@ onMounted(()=>{
 })
 
 function go(url){
-    if(window.location.hostname == '127.0.0.1') window.location.assign(`${window.location.protocol}//${window.location.hostname}:${window.location.port}/pw-bookingapp/admin/`+url)
-    else window.location.assign(`${window.location.protocol}//${window.location.hostname}/pw-bookingapp/admin/`+url)
+    if(window.location.hostname == '127.0.0.1') window.location.assign(`${import.meta.env.VITE_BASEURL}`+url)
+    else window.location.assign(`${import.meta.env.VITE_BASEURL}`+url)
 }
     
 
@@ -31,7 +31,7 @@ function deleteForm(id){
 
 function showEmbedCode(id){
     embedCode.value = 
-`<iframe id="pwform" src="${window.location.protocol}//${window.location.hostname}/pw-bookingapp/admin/form?form_id=${id}">
+`<iframe id="pwform" src="${import.meta.env.VITE_BASEURL}form?form_id=${id}">
 </iframe>`
 }
 
@@ -44,7 +44,7 @@ function showEmbedCode(id){
         <textarea v-if="embedCode != null" class="block w-full resize-none border h-[50px] outline-none p-2 rounded-md mb-2" style="font-family:monospace" readonly v-model="embedCode" @click="$event.target.select()">
         </textarea>
         <ul>
-          <li class="transition grid bg-white my-1 py-1 px-2 rounded-[4px] border border-gray-300 relative gap-1 items-center hover:scale-[1.005] active:scale-[0.995]" style="grid-template-columns: 1fr 30px 30px;" v-for="f,i in forms" :key="i">
+          <li class="transition grid bg-white my-1 py-1 px-2 rounded-[4px] border border-gray-300 relative gap-1 items-center hover:scale-[1.005] active:scale-[0.995]" style="grid-template-columns: 1fr 40px 30px;" v-for="f,i in forms" :key="i">
             <p>{{f.book_form_name}} <span class="inline-block relative pl-3 ml-2 text-sm before:content-[''] before:bg-gray-900 before:w-1 before:h-1 before:absolute before:top-[10px] before:rounded-full before:left-0">Created: {{ dateFormat('%lm %d, %y',f.book_form_created) }}</span></p>
             <button title="Embed Form" class="rounded-md hover:scale-105 active:scale-95 transition bg-gray-900  text-white flex justify-center items-center text-[13px] p-2" @click="showEmbedCode(f.book_form_id)"><div class="tooltip-hover"><Tooltip message="Embed Form" /></div>{{ '</>' }}</button>
             <button title="Edit Form" class="rounded-md hover:scale-105 active:scale-95 transition bg-gray-900 text-white flex justify-center items-center p-2" @click="go('form-builder?form_id='+f.book_form_id)"><div class="tooltip-hover"><Tooltip message="Edit Form" /></div><i class="flex justify-center items-center" v-html="icons.pencil"></i></button>
